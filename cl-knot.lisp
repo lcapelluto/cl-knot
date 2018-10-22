@@ -18,13 +18,16 @@
           :documentation "")
    (fire :initarg :fire
          :reader fire
-         :documentation ""))
+         :documentation "")
+   (symbol :initarg :sym
+           :reader sym
+           :documentation "Magic ability."))
   (:default-initargs :earth 0
                      :wind 0
                      :fire 0))
 
 
-; TODO make these methods
+; TODO make these methods instead
 (defun diff (feature b0 b1)
   (abs (- (funcall feature b0) (funcall feature b1))))
 
@@ -41,7 +44,7 @@
     (<= differences 1)))
 
 (defun valid-simple-bead (qualities)
-  ; check type
+  ; TODO check type
   (if (null qualities)
       'nil
       (let ((num-ones 0))
@@ -51,30 +54,25 @@
         (<= num-ones 1))))
 
 (defun update-quality-index (qualities index)
-  (format t "~a, index: ~a ~%" qualities index)
   (let ((new-val (+ 1 (nth index qualities))))
-    (format t "new: ~a~%" new-val)
     (cond ((< new-val 3)
            (setf (nth index qualities) new-val)
            qualities)
           ((= index 0)
            ;; We've reached the last bead
-           (setf qualities '(0 0 0))
+           (setf qualities nil)
            qualities)
           (t
            (setf (nth index qualities) 0)
            (setf qualities (update-quality-index qualities (- index 1)))
-           qualities))
-    ;(format t "~a index ~a~%" qualities index)
-    ))
+           qualities))))
 
 (defun update-simple-qualities (qualities)
   "Return the next logical collection of qualities in the simple knot."
-  ; (check-type next three-tuple)
+  ; TODO (check-type next three-tuple)
   (loop :do
-    ;(format t "qual: ~a~%" qualities)
     (setf qualities (update-quality-index qualities 2))
-        :until (or (equal qualities '(0 0 0)) (valid-simple-bead qualities)))
+        :until (or (null qualities) (valid-simple-bead qualities)))
   qualities)
 
 (defun all-simple-bead-qualities ()
@@ -86,17 +84,20 @@
       (when (null curr) (return)))
     quality-list))
 
-;; (defun create-simple-knot ()
-;;   (loop :for earth :in '(0 1 2)
-;;         :for fire :in '(0 1 2)
-;;         :for wind :in '(0 1 2)
-;;         collect (make-instance 'bead :earth earth :wind wind :fire fire)))
-
 (defun create-simple-knot ()
   (loop :for qualities :in (all-simple-bead-qualities)
+        :for magic :from 0
         collect (make-instance 'bead :earth (car qualities)
                                      :wind (cadr qualities)
-                                     :fire (caddr qualities))))
+                                     :fire (caddr qualities)
+                                     :sym magic)))
+
+(defun casting-spell-p (knot)
+  (loop :for beadie :in knot
+        :for magic :from 0 :do
+          (when (not (= (sym beadie) magic))
+            (return nil))
+          t))
 
 (defun create-knot ()
   
