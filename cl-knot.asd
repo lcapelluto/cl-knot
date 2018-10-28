@@ -3,7 +3,7 @@
 ;;;; Author: Lauren Capelluto
 
 (asdf:defsystem #:cl-knot
-  :description "A small knot based untangling game."
+  :description "Help kitty untangle the knot!"
   :author "Lauren Capelluto"
   :serial t
   :components ((:file "cl-knot")))

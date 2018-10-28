@@ -2,15 +2,34 @@
 ;;;;
 ;;;; Author: Lauren Capelluto
 
-;; TODO: need to fix bug where (all-simple-beads) thinks it should start at '(2 0 0)
+;; TODO need to fix bug where (all-simple-beads) thinks it should start at '(2 0 0)
+;; TODO style and cleaning (reorganizing)
+;; TODO renaming for thematical consistency
+;; TODO GUI.... T-T
+;; TODO main
+;; TODO general knot, maybe other knots
+;; define allowed moves
+;; define transformations for each move which change the knot
+;; try knoting and unknoting
+;; meta: simplify syntax with macros hopefully
+;; write tests
+;; documentation strings
+;; make beadies more printable
 
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* (create-simple-knot))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; making beads                                                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; enum? LoL esk? characters?
 (defclass bead ()
-  ((earth :initarg :earth
+  ((id :initarg :id
+             :reader id
+             :documentation "")
+   (earth :initarg :earth
           :reader earth
           :documentation "")
    (wind :initarg :wind
@@ -18,14 +37,10 @@
           :documentation "")
    (fire :initarg :fire
          :reader fire
-         :documentation "")
-   (symbol :initarg :sym
-           :reader sym
-           :documentation "Magic ability."))
+         :documentation ""))
   (:default-initargs :earth 0
                      :wind 0
                      :fire 0))
-
 
 ; TODO make these methods instead
 (defun diff (feature b0 b1)
@@ -42,6 +57,12 @@
     (loop :for feature in '(earth wind fire) :do
       (setq differences (+ differences (funcall feature sum-beadies))))
     (<= differences 1)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; making knots                                                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defun valid-simple-bead (qualities)
   ; TODO check type
@@ -90,20 +111,40 @@
         collect (make-instance 'bead :earth (car qualities)
                                      :wind (cadr qualities)
                                      :fire (caddr qualities)
-                                     :sym magic)))
-
-(defun casting-spell-p (knot)
-  (loop :for beadie :in knot
-        :for magic :from 0 :do
-          (when (not (= (sym beadie) magic))
-            (return nil))
-          t))
+                                     :id qualities)))
 
 (defun create-knot ()
-  
+  ;; TODO replace all-simple-bead-qualities
+  (loop :for qualities :in (all-simple-bead-qualities)
+        :for magic :from 0
+        collect (make-instance 'bead :earth (car qualities)
+                                     :wind (cadr qualities)
+                                     :fire (caddr qualities)
+                                     :id qualities)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; gameplay                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun untangled-p (knot)
+  (loop :for beadie :in knot
+        :for magic :from 0
+        when (not (= (sym beadie) magic))
+          do (return nil)
+        finally (return t)))
+
+;; TODO: macro for moves?
+(defun make-move (knot section direction)
+  ; x = 0 plane, clockwise rotation - F
+  ; lets call direction "up" or "down" instead of rotational
+  ; first 8 beadies end up in new place
   )
 
 (defun %main (argv)
-  "Begin or knot?"
+  "Help Pusheen untangle her knotted yarn!"
   (declare (ignore argv))
+  ;; TODO make random moves to knot it up
+  ;; start gui
+  ;; accept moves
+  ;; check if untangled after each move
   nil)
