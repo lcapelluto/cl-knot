@@ -5,5 +5,6 @@
 (asdf:defsystem #:cl-knot
   :description "Help kitty untangle the knot!"
   :author "Lauren Capelluto"
-  :serial t
-  :components ((:file "cl-knot")))
+  :depends-on (#:clim)
+  :components ((:file "package")
+               (:file "cl-knot")))
