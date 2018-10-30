@@ -18,56 +18,59 @@
 
 (in-package #:cl-knot)
 
-(defparameter *simple-knot* (create-simple-knot))
+(defparameter *simple-knot* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making beads                                                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; enum? LoL esk? characters?
+; TODO enum? LoL esk? characters?
 (defclass bead ()
-  ((id :initarg :id
-             :reader id
-             :documentation "")
+  ((id :reader id
+       :documentation "")
    (earth :initarg :earth
-          :reader earth
+          :accessor earth
           :documentation "")
    (wind :initarg :wind
-          :reader wind
+          :accessor wind
           :documentation "")
    (fire :initarg :fire
-         :reader fire
-         :documentation ""))
-  (:default-initargs :earth 0
-                     :wind 0
-                     :fire 0))
+         :accessor fire
+         :documentation "")))
 
-; TODO make these methods instead
+(defmethod initialize-instance :after ((beadie bead) &key)
+  (setf (slot-value beadie 'id)
+        (list (earth beadie) (wind beadie) (fire beadie))))
+
+; TODO make these methods instead?
 (defun diff (feature b0 b1)
   (abs (- (funcall feature b0) (funcall feature b1))))
 
+; why isn't this an error?
 (defmethod compare (b0 b1)
   (make-instance 'bead :earth (diff 'earth b0 b1)
                        :wind (diff 'wind b0 b1)
                        :fire (diff 'fire b0 b1)))
 
 (defun has-thread (beadie0 beadie1)
+  ;; TODO ID based
   (let ((differences 0)
         (sum-beadies (compare beadie0 beadie1)))
     (loop :for feature in '(earth wind fire) :do
       (setq differences (+ differences (funcall feature sum-beadies))))
     (<= differences 1)))
 
+;; TODO
+;; (defmethod print-object ((beadie bead) & key))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making knots                                                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defun valid-simple-bead (qualities)
-  ; TODO check type
+   ; TODO check type
   (if (null qualities)
-      'nil
+      nil
       (let ((num-ones 0))
         (loop for q :in qualities :do
           (if (= q 1)
@@ -110,8 +113,7 @@
         :for magic :from 0
         collect (make-instance 'bead :earth (car qualities)
                                      :wind (cadr qualities)
-                                     :fire (caddr qualities)
-                                     :id qualities)))
+                                     :fire (caddr qualities))))
 
 (defun create-knot ()
   ;; TODO replace all-simple-bead-qualities
@@ -119,8 +121,7 @@
         :for magic :from 0
         collect (make-instance 'bead :earth (car qualities)
                                      :wind (cadr qualities)
-                                     :fire (caddr qualities)
-                                     :id qualities)))
+                                     :fire (caddr qualities))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gameplay                                                         ;;
@@ -128,21 +129,64 @@
 
 (defun untangled-p (knot)
   (loop :for beadie :in knot
-        :for magic :from 0
-        when (not (= (sym beadie) magic))
+        when (not (equal (id beadie) (list (earth beadie) (wind beadie) (fire beadie))))
           do (return nil)
         finally (return t)))
+
+(defun move-beadie (beadie section direction)
+  (declare (ignore direction section))
+  ;; point = earth, wind, fire, remove third by section
+  ;; x = x - 1, y = y - 1
+  ;; x -> -y, y -> x (times overall -1 depending on direction)
+  ;; x += 1, y += 1           counter (pull)   clockwise (push)
+  ;; x = +/-(-y + 1) + 1 >>>> x = 2 - y        or x = y
+  ;; y = +/-(x - 1) + 1  >>>> y = x            or y = 2 - x
+  (let ((wind* (wind beadie))
+        (fire* (fire beadie)))
+    ;; pull
+    (setf (wind beadie) (+ 1 (- 1 fire*)))
+    (setf (fire beadie) (+ 1 (- wind* 1)))))
 
 ;; TODO: macro for moves?
 (defun make-move (knot section direction)
   ; x = 0 plane, clockwise rotation - F
   ; lets call direction "up" or "down" instead of rotational
   ; first 8 beadies end up in new place
-  )
+  (loop :for beadie :in knot
+        ; TODO by section, a quality name and a number 0 or 2
+        when (= 0 (earth beadie))
+          do (move-beadie beadie section direction)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; graphics                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod handle-repaint ((pane hello-world-pane) region)
+  (let ((w (bounding-rectangle-width pane))
+        (h (bounding-rectangle-height pane)))
+    (draw-rectangle* pane 0 0 w h
+                     :filled t
+                     :ink (pane-background pane))
+    (draw-text* pane
+                (greeting *application-frame*)
+                (floor w 2) (floor h 2)
+                :align-x :center
+                :align-y :center)))
+
+(clim:define-application-frame hello-world ()
+  ((greeting :initform "Hello World"
+             :accessor greeting))
+  (:pane (make-pane 'hello-world-pane)))
 
 (defun %main (argv)
   "Help Pusheen untangle her knotted yarn!"
   (declare (ignore argv))
+
+  (setf *simple-knot* (create-simple-knot))
+  (make-move *simple-knot* 'earth 'pull)
+  ;; (loop while (not (untangled-p *simple-knot*))
+  ;;       do (get-move))
+  (clim:run-frame-top-level (clim:make-application-frame 'hello-world))
   ;; TODO make random moves to knot it up
   ;; start gui
   ;; accept moves
