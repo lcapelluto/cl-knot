@@ -19,6 +19,8 @@
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* nil)
+(defparameter *application-frame* nil)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making beads                                                     ;;
@@ -161,23 +163,31 @@
 ;; graphics                                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod handle-repaint ((pane hello-world-pane) region)
-  (let ((w (bounding-rectangle-width pane))
-        (h (bounding-rectangle-height pane)))
-    (draw-rectangle* pane 0 0 w h
-                     :filled t
-                     :ink (pane-background pane))
-    (draw-text* pane
-                (greeting *application-frame*)
-                (floor w 2) (floor h 2)
-                :align-x :center
-                :align-y :center)))
+;; (defmethod handle-repaint ((pane hello-world-pane) region)
+;;   (let ((w (bounding-rectangle-width pane))
+;;         (h (bounding-rectangle-height pane)))
+;;     (draw-rectangle* pane 0 0 w h
+;;                      :filled t
+;;                      :ink (pane-background pane))
+;;     (draw-text* pane
+;;                 (greeting *application-frame*)
+;;                 (floor w 2) (floor h 2)
+;;                 :align-x :center
+;;                 :align-y :center)))
 
-(clim:define-application-frame hello-world ()
+(clim:define-application-frame pusheens-home ()
   ((greeting :initform "Hello World"
              :accessor greeting))
-  (:pane (make-pane 'hello-world-pane)))
+  (:panes (display :application))
+  (:layouts (default display)))
 
+(define-pusheens-home-command (com-quit :menu t) ()
+  (clim:frame-exit *application-frame*))
+
+(defvar *pusheens-home-frame* nil)
+
+;; (require :climxm)
+;; loading the demos fixed the "No CLIM backends have been loaded!" error
 (defun %main (argv)
   "Help Pusheen untangle her knotted yarn!"
   (declare (ignore argv))
@@ -186,9 +196,11 @@
   (make-move *simple-knot* 'earth 'pull)
   ;; (loop while (not (untangled-p *simple-knot*))
   ;;       do (get-move))
-  (clim:run-frame-top-level (clim:make-application-frame 'hello-world))
+  (clim:run-frame-top-level (clim:make-application-frame 'pusheens-home))
   ;; TODO make random moves to knot it up
   ;; start gui
   ;; accept moves
   ;; check if untangled after each move
+  (loop :for beadie :in *simple-knot*
+        :do (format t "~a~%" beadie))
   nil)
