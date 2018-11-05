@@ -8,18 +8,17 @@
 ;; TODO GUI.... T-T
 ;; TODO main
 ;; TODO general knot, maybe other knots
-;; define allowed moves
+;; define allowed moves - need to be enumerated somehow
 ;; define transformations for each move which change the knot
 ;; try knoting and unknoting
 ;; meta: simplify syntax with macros hopefully
 ;; write tests
 ;; documentation strings
-;; make beadies more printable
 
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* nil)
-(defparameter *application-frame* nil)
+;(defparameter *application-frame* nil)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,8 +61,12 @@
       (setq differences (+ differences (funcall feature sum-beadies))))
     (<= differences 1)))
 
-;; TODO
-;; (defmethod print-object ((beadie bead) & key))
+(defmethod print-object ((beadie bead) stream)
+  (print-unreadable-object (beadie stream :type t)
+    (format stream "~D:  ~D ~D ~D" (id beadie)
+            (earth beadie)
+            (wind beadie)
+            (fire beadie))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making knots                                                     ;;
@@ -125,6 +128,10 @@
                                      :wind (cadr qualities)
                                      :fire (caddr qualities))))
 
+(defun print-knot (knot stream)
+  (loop :for beadie :in knot :do
+    (format stream "~a~%" beadie)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gameplay                                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -156,51 +163,50 @@
   ; first 8 beadies end up in new place
   (loop :for beadie :in knot
         ; TODO by section, a quality name and a number 0 or 2
-        when (= 0 (earth beadie))
+        when (= 2 (earth beadie))
           do (move-beadie beadie section direction)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; graphics                                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defmethod handle-repaint ((pane hello-world-pane) region)
-;;   (let ((w (bounding-rectangle-width pane))
-;;         (h (bounding-rectangle-height pane)))
-;;     (draw-rectangle* pane 0 0 w h
-;;                      :filled t
-;;                      :ink (pane-background pane))
-;;     (draw-text* pane
-;;                 (greeting *application-frame*)
-;;                 (floor w 2) (floor h 2)
-;;                 :align-x :center
-;;                 :align-y :center)))
+(defmethod handle-repaint ((pane pusheen-home-pane) region)
+  (let ((w (bounding-rectangle-width pane))
+        (h (bounding-rectangle-height pane)))
+    (draw-rectangle* pane 0 0 w h
+                     :filled t
+                     :ink (pane-background pane))
+    (draw-text* pane
+                (greeting *application-frame*)
+                (floor w 2) (floor h 2)
+                :align-x :center
+                :align-y :center)))
+
+(defclass pusheen-home-pane
+    (clim:clim-stream-pane) ())
 
 (clim:define-application-frame pusheens-home ()
   ((greeting :initform "Hello World"
              :accessor greeting))
-  (:panes (display :application))
-  (:layouts (default display)))
+  (:pane (clim:make-pane 'pusheen-home-pane)))
 
 (define-pusheens-home-command (com-quit :menu t) ()
-  (clim:frame-exit *application-frame*))
+  (frame-exit *application-frame*))
 
-(defvar *pusheens-home-frame* nil)
+;(defvar *pusheens-home-frame* nil)
 
-;; (require :climxm)
-;; loading the demos fixed the "No CLIM backends have been loaded!" error
 (defun %main (argv)
   "Help Pusheen untangle her knotted yarn!"
   (declare (ignore argv))
 
   (setf *simple-knot* (create-simple-knot))
+  ;; TODO replace with random moves to knot it up
   (make-move *simple-knot* 'earth 'pull)
-  ;; (loop while (not (untangled-p *simple-knot*))
-  ;;       do (get-move))
-  (clim:run-frame-top-level (clim:make-application-frame 'pusheens-home))
-  ;; TODO make random moves to knot it up
-  ;; start gui
+  (make-move *simple-knot* 'earth 'pull)
+  (let ((frame (clim:make-application-frame 'pusheens-home)))
+    (clim:run-frame-top-level frame))
+
   ;; accept moves
-  ;; check if untangled after each move
-  (loop :for beadie :in *simple-knot*
-        :do (format t "~a~%" beadie))
+  ;; check if untangled after each move (untangled-p *simple-knot*)
+  (print-knot *simple-knot* t)
   nil)
