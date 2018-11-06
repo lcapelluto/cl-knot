@@ -2,32 +2,17 @@
 ;;;;
 ;;;; Author: Lauren Capelluto
 
-;; TODO need to fix bug where (all-simple-beads) thinks it should start at '(2 0 0)
-;; TODO style and cleaning (reorganizing)
-;; TODO renaming for thematical consistency
-;; TODO GUI.... T-T
-;; TODO main
-;; TODO general knot, maybe other knots
-;; define allowed moves - need to be enumerated somehow
-;; define transformations for each move which change the knot
-;; try knoting and unknoting
-;; meta: simplify syntax with macros hopefully
-;; write tests
-;; documentation strings
 ;; update README
 
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* nil)
 ;(defparameter *moves* (list +F+ +B+ +L+ +R+ +U+ +D+))
-;(defparameter *application-frame* nil)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making beads                                                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; TODO enum? LoL esk? characters?
 (defclass bead ()
   ((id :reader id
        :documentation "")
@@ -45,7 +30,6 @@
   (setf (slot-value beadie 'id)
         (list (earth beadie) (wind beadie) (fire beadie))))
 
-; TODO make these methods instead?
 (defun diff (feature b0 b1)
   (abs (- (funcall feature b0) (funcall feature b1))))
 
