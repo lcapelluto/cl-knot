@@ -14,10 +14,12 @@
 ;; meta: simplify syntax with macros hopefully
 ;; write tests
 ;; documentation strings
+;; update README
 
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* nil)
+;(defparameter *moves* (list +F+ +B+ +L+ +R+ +U+ +D+))
 ;(defparameter *application-frame* nil)
 
 
@@ -170,30 +172,48 @@
 ;; graphics                                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod handle-repaint ((pane pusheen-home-pane) region)
-  (let ((w (bounding-rectangle-width pane))
-        (h (bounding-rectangle-height pane)))
-    (draw-rectangle* pane 0 0 w h
-                     :filled t
-                     :ink (pane-background pane))
-    (draw-text* pane
-                (greeting *application-frame*)
-                (floor w 2) (floor h 2)
-                :align-x :center
-                :align-y :center)))
+;; (defclass pusheen-home-pane
+;;     (clim:clim-stream-pane) ())
 
-(defclass pusheen-home-pane
-    (clim:clim-stream-pane) ())
+;; (defmethod handle-repaint ((pane pusheen-home-pane) region)
+;;   (let ((w (bounding-rectangle-width pane))
+;;         (h (bounding-rectangle-height pane)))
+;;     (draw-rectangle* pane 0 0 w h
+;;                      :filled t
+;;                      :ink (pane-background pane))
+;;     (draw-text* pane
+;;                 (greeting *application-frame*)
+;;                 (floor w 2) (floor h 2)
+;;                 :align-x :center
+;;                 :align-y :center)))
 
-(clim:define-application-frame pusheens-home ()
+(define-application-frame pusheens-home ()
   ((greeting :initform "Hello World"
-             :accessor greeting))
-  (:pane (clim:make-pane 'pusheen-home-pane)))
+             :accessor greeting)
+   (knot :initarg :knot
+         :accessor knot))
+  (:pointer-documentation t)
+  (:panes
+   ; TODO rename
+   (app :application
+        :height 400
+        :width 600
+        :display-function 'display-pusheens-home)
+   (int :interactor
+        :height 400
+        :width 600))
+  (:layouts
+   (default (horizontally ()
+              app int))))
+
+(defun display-pusheens-home (frame pane)
+  (print-knot (knot frame) pane))
 
 (define-pusheens-home-command (com-quit :menu t) ()
   (frame-exit *application-frame*))
 
-;(defvar *pusheens-home-frame* nil)
+(define-pusheens-home-command (com-parity :name t) ((number 'integer))
+  (setf (current-number *application-frame*) number))
 
 (defun %main (argv)
   "Help Pusheen untangle her knotted yarn!"
@@ -203,10 +223,9 @@
   ;; TODO replace with random moves to knot it up
   (make-move *simple-knot* 'earth 'pull)
   (make-move *simple-knot* 'earth 'pull)
-  (let ((frame (clim:make-application-frame 'pusheens-home)))
-    (clim:run-frame-top-level frame))
+  (let ((frame (make-application-frame 'pusheens-home :knot *simple-knot*)))
+    (run-frame-top-level frame))
 
   ;; accept moves
   ;; check if untangled after each move (untangled-p *simple-knot*)
-  (print-knot *simple-knot* t)
   nil)
