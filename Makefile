@@ -9,7 +9,7 @@ cl-knot:
                  --eval "(setf sb-ext:\*on-package-variance\* '(:warn (:swank :swank-backend :swank-repl) :error t))" \
                  --load-system cl-knot \
                  --compress-core \
-                 --entry cl-knot:%main
+                 --entry cl-knot:main
 
 ### Cleanup.
 

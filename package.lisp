@@ -5,4 +5,4 @@
 (defpackage #:cl-knot
   (:documentation "Knot, a package.")
   (:use #:clim #:clim-lisp)
-  (:export #:%main))
+  (:export #:main))

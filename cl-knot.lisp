@@ -7,7 +7,6 @@
 (in-package #:cl-knot)
 
 (defparameter *simple-knot* nil)
-;(defparameter *moves* (list +F+ +B+ +L+ +R+ +U+ +D+))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; making beads                                                     ;;
@@ -128,28 +127,40 @@
           do (return nil)
         finally (return t)))
 
+(defmacro make-section-movement (name section2 section3)
+  `(defun ,name (beadie direction)
+     (let ((section2* (,section2 beadie))
+           (section3* (,section3 beadie)))
+       (cond ((equal direction 'pull)
+              (setf (,section2 beadie) (+ 1 (- 1 section3*)))
+              (setf (,section3 beadie) (+ 1 (- section2* 1))))
+             ((equal direction 'push)
+              (setf (,section2 beadie) (+ 1 (- section3* 1)))
+              (setf (,section3 beadie) (+ 1 (- 1 section2*))))
+             (t
+              (error 'unknown direction :option direction))))))
+
+; check parities
+(make-section-movement move-beadie-earth wind fire)
+(make-section-movement move-beadie-wind fire earth)
+(make-section-movement move-beadie-fire earth wind)
+
+; I wish there was a nicer way
 (defun move-beadie (beadie section direction)
-  (declare (ignore direction section))
-  ;; point = earth, wind, fire, remove third by section
-  ;; x = x - 1, y = y - 1
-  ;; x -> -y, y -> x (times overall -1 depending on direction)
-  ;; x += 1, y += 1           counter (pull)   clockwise (push)
-  ;; x = +/-(-y + 1) + 1 >>>> x = 2 - y        or x = y
-  ;; y = +/-(x - 1) + 1  >>>> y = x            or y = 2 - x
-  (let ((wind* (wind beadie))
-        (fire* (fire beadie)))
-    ;; pull
-    (setf (wind beadie) (+ 1 (- 1 fire*)))
-    (setf (fire beadie) (+ 1 (- wind* 1)))))
+  (cond ((equal section 'earth)
+         (move-beadie-earth beadie direction))
+        ((equal section 'wind)
+         (move-beadie-wind beadie direction))
+        ((equal section 'fire)
+         (move-beadie-fire beadie direction))))
 
 ;; TODO: macro for moves?
-(defun make-move (knot section direction)
+(defun make-move (knot section direction plane)
   ; x = 0 plane, clockwise rotation - F
-  ; lets call direction "up" or "down" instead of rotational
   ; first 8 beadies end up in new place
   (loop :for beadie :in knot
         ; TODO by section, a quality name and a number 0 or 2
-        when (= 2 (earth beadie))
+        when (= plane (funcall section beadie))
           do (move-beadie beadie section direction)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -191,25 +202,41 @@
               app int))))
 
 (defun display-pusheens-home (frame pane)
-  (print-knot (knot frame) pane))
+  (print-knot (knot frame) pane)
+  (when (untangled-p (knot *application-frame*))
+    (format pane "Success!")))
 
 (define-pusheens-home-command (com-quit :menu t) ()
   (frame-exit *application-frame*))
 
-(define-pusheens-home-command (com-parity :name t) ((number 'integer))
-  (setf (current-number *application-frame*) number))
+(defmacro register-move (command section direction plane)
+  (progn
+    `(define-pusheens-home-command (,command :name t) ()
+       (make-move (knot *application-frame*) ,section ,direction ,plane))))
 
-(defun %main (argv)
+(register-move com-F 'earth 'pull 0)
+(register-move com-Finv 'earth 'push 0)
+(register-move com-B 'earth 'pull 2)
+(register-move com-Binv 'earth 'push 2)
+(register-move com-L 'wind 'pull 0)
+(register-move com-Linv 'wind 'push 0)
+(register-move com-R 'wind 'pull 2)
+(register-move com-Rinv 'wind 'push 2)
+(register-move com-U 'fire 'pull 0)
+(register-move com-Uinv 'fire 'push 0)
+(register-move com-D 'fire 'pull 2)
+(register-move com-Dinv 'fire 'push 2)
+
+(defun main (argv)
   "Help Pusheen untangle her knotted yarn!"
   (declare (ignore argv))
 
   (setf *simple-knot* (create-simple-knot))
   ;; TODO replace with random moves to knot it up
-  (make-move *simple-knot* 'earth 'pull)
-  (make-move *simple-knot* 'earth 'pull)
+  (make-move *simple-knot* 'earth 'pull 0)
+
   (let ((frame (make-application-frame 'pusheens-home :knot *simple-knot*)))
     (run-frame-top-level frame))
 
-  ;; accept moves
   ;; check if untangled after each move (untangled-p *simple-knot*)
   nil)
