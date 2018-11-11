@@ -2,19 +2,16 @@
 ;;;;
 ;;;; Author: Lauren Capelluto
 
-;; update README
-
 (in-package #:cl-knot)
 
+;; The game knot, with the minimal number of beadies.
 (defparameter *simple-knot* nil)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; making beads                                                     ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Beadies
 
-(defclass bead ()
+(defclass beadie ()
   ((id :reader id
-       :documentation "")
+       :documentation "A unique constant identifier.")
    (earth :initarg :earth
           :accessor earth
           :documentation "")
@@ -25,109 +22,93 @@
          :accessor fire
          :documentation "")))
 
-(defmethod initialize-instance :after ((beadie bead) &key)
-  (setf (slot-value beadie 'id)
-        (list (earth beadie) (wind beadie) (fire beadie))))
+(defmethod initialize-instance :after ((object beadie) &key)
+  (setf (slot-value object 'id)
+        (list (earth object) (wind object) (fire object))))
 
-(defun diff (feature b0 b1)
-  (abs (- (funcall feature b0) (funcall feature b1))))
+(defmethod print-object ((object beadie) stream)
+  (print-unreadable-object (object stream :type t)
+    (format stream "~D:  ~D ~D ~D" (id object)
+            (earth object)
+            (wind object)
+            (fire object))))
 
-; why isn't this an error?
-(defmethod compare (b0 b1)
-  (make-instance 'bead :earth (diff 'earth b0 b1)
-                       :wind (diff 'wind b0 b1)
-                       :fire (diff 'fire b0 b1)))
+(defun id-index-difference (index beadie0 beadie1)
+  "Return the difference of the INDEX of ID between the beadies."
+  (abs (- (nth index (id beadie0)) (nth index (id beadie1)))))
 
-(defun has-thread (beadie0 beadie1)
-  ;; TODO ID based
-  (let ((differences 0)
-        (sum-beadies (compare beadie0 beadie1)))
-    (loop :for feature in '(earth wind fire) :do
-      (setq differences (+ differences (funcall feature sum-beadies))))
+(defun id-difference (beadie0 beadie1)
+  "Return the absolute difference of the beadie IDs, per index."
+  (loop :for index :in '(0 1 2)
+        :collect (id-index-difference index beadie0 beadie1)))
+
+(defun threadp (beadie0 beadie1)
+  "Is there a thread between the two beadies?"
+  (let ((differences (apply '+ (id-difference beadie0 beadie1))))
     (<= differences 1)))
 
-(defmethod print-object ((beadie bead) stream)
-  (print-unreadable-object (beadie stream :type t)
-    (format stream "~D:  ~D ~D ~D" (id beadie)
-            (earth beadie)
-            (wind beadie)
-            (fire beadie))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; making knots                                                     ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Knots
 
-(defun valid-simple-bead (qualities)
-   ; TODO check type
-  (if (null qualities)
-      nil
-      (let ((num-ones 0))
-        (loop for q :in qualities :do
-          (if (= q 1)
-              (setf num-ones (+ 1 num-ones))))
-        (<= num-ones 1))))
-
-(defun update-quality-index (qualities index)
-  (let ((new-val (+ 1 (nth index qualities))))
-    (cond ((< new-val 3)
-           (setf (nth index qualities) new-val)
-           qualities)
-          ((= index 0)
-           ;; We've reached the last bead
-           (setf qualities nil)
-           qualities)
-          (t
-           (setf (nth index qualities) 0)
-           (setf qualities (update-quality-index qualities (- index 1)))
-           qualities))))
+(defun make-simple-knot ()
+  "Make a list of beadies with the simplest collections of qualities."
+  (let ((curr (list 0 0 0)))
+    (loop
+      :collect (make-instance 'beadie :earth (first curr)
+                                      :wind (second curr)
+                                      :fire (third curr))
+      :do (setf curr (update-simple-qualities curr))
+      :until (null curr))))
 
 (defun update-simple-qualities (qualities)
-  "Return the next logical collection of qualities in the simple knot."
-  ; TODO (check-type next three-tuple)
+  "Return the next logical quality trio in the simple knot."
   (loop :do
     (setf qualities (update-quality-index qualities 2))
-        :until (or (null qualities) (valid-simple-bead qualities)))
+        :until (or (null qualities) (simple-beadie-p qualities)))
   qualities)
 
-(defun all-simple-bead-qualities ()
-  (let ((curr '(0 0 0))
-         (quality-list nil))
-    (loop
-      (setf quality-list (append quality-list (list (copy-list curr))))
-      (setf curr (update-simple-qualities curr))
-      (when (null curr) (return)))
-    quality-list))
+(defun update-quality-index (qualities index)
+  "Increase, like in a ternary string, the list of qualities, starting at INDEX and
+  moving to the next significant index if needed."
+  (let ((new-val (+ 1 (nth index qualities))))
+    (cond
+      ((< new-val 3)
+       (setf (nth index qualities) new-val))
+      ((= index 0)
+       ;; We've reached the last beadie
+       (setf qualities nil))
+      (t
+       ;; We have to "carry the 1"
+       (setf (nth index qualities) 0)
+       (setf qualities (update-quality-index qualities (- index 1)))))
+    qualities))
 
-(defun create-simple-knot ()
-  (loop :for qualities :in (all-simple-bead-qualities)
-        :for magic :from 0
-        collect (make-instance 'bead :earth (car qualities)
-                                     :wind (cadr qualities)
-                                     :fire (caddr qualities))))
+(defun simple-beadie-p (qualities)
+  "Does this collection of qualities belong in the simple knot?"
+  (<= (count 1 qualities)))
 
-(defun create-knot ()
-  ;; TODO replace all-simple-bead-qualities
-  (loop :for qualities :in (all-simple-bead-qualities)
-        :for magic :from 0
-        collect (make-instance 'bead :earth (car qualities)
-                                     :wind (cadr qualities)
-                                     :fire (caddr qualities))))
+(defun tangle-knot (knot)
+  "Randomly tangle the knot."
+  ; TODO
+  (apply-move knot 'earth 'pull 0)
+  knot)
+
+(defun untangledp (knot)
+  "Is the knot untangled (i.e. in the solution state)?"
+  (loop :for beadie :in knot
+        :when (not (equal (id beadie) (list (earth beadie) (wind beadie) (fire beadie))))
+          :do (return nil)
+        :finally (return t)))
 
 (defun print-knot (knot stream)
   (loop :for beadie :in knot :do
     (format stream "~a~%" beadie)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; gameplay                                                         ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun untangled-p (knot)
-  (loop :for beadie :in knot
-        when (not (equal (id beadie) (list (earth beadie) (wind beadie) (fire beadie))))
-          do (return nil)
-        finally (return t)))
+;;;; Gameplay
 
 (defmacro make-section-movement (name section2 section3)
+  "Define the transformation for the given sections."
   `(defun ,name (beadie direction)
      (let ((section2* (,section2 beadie))
            (section3* (,section3 beadie)))
@@ -140,13 +121,13 @@
              (t
               (error 'unknown direction :option direction))))))
 
-; check parities
+; TODO check parities
 (make-section-movement move-beadie-earth wind fire)
 (make-section-movement move-beadie-wind fire earth)
 (make-section-movement move-beadie-fire earth wind)
 
-; I wish there was a nicer way
 (defun move-beadie (beadie section direction)
+  "Modify a single beadie's location as part of a move."
   (cond ((equal section 'earth)
          (move-beadie-earth beadie direction))
         ((equal section 'wind)
@@ -154,42 +135,20 @@
         ((equal section 'fire)
          (move-beadie-fire beadie direction))))
 
-;; TODO: macro for moves?
-(defun make-move (knot section direction plane)
-  ; x = 0 plane, clockwise rotation - F
-  ; first 8 beadies end up in new place
+(defun apply-move (knot section direction plane)
+  "Act a complete move upon the knot structure."
   (loop :for beadie :in knot
-        ; TODO by section, a quality name and a number 0 or 2
-        when (= plane (funcall section beadie))
-          do (move-beadie beadie section direction)))
+        :when (= plane (funcall section beadie))
+          :do (move-beadie beadie section direction)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; graphics                                                         ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defclass pusheen-home-pane
-;;     (clim:clim-stream-pane) ())
+;;;; Graphics
 
-;; (defmethod handle-repaint ((pane pusheen-home-pane) region)
-;;   (let ((w (bounding-rectangle-width pane))
-;;         (h (bounding-rectangle-height pane)))
-;;     (draw-rectangle* pane 0 0 w h
-;;                      :filled t
-;;                      :ink (pane-background pane))
-;;     (draw-text* pane
-;;                 (greeting *application-frame*)
-;;                 (floor w 2) (floor h 2)
-;;                 :align-x :center
-;;                 :align-y :center)))
-
-(define-application-frame pusheens-home ()
-  ((greeting :initform "Hello World"
-             :accessor greeting)
-   (knot :initarg :knot
+(clim:define-application-frame pusheens-home ()
+  ((knot :initarg :knot
          :accessor knot))
   (:pointer-documentation t)
   (:panes
-   ; TODO rename
    (app :application
         :height 400
         :width 600
@@ -198,21 +157,25 @@
         :height 400
         :width 600))
   (:layouts
-   (default (horizontally ()
+   (default (clim:horizontally ()
               app int))))
 
 (defun display-pusheens-home (frame pane)
+  "How to display Pusheen's Home."
   (print-knot (knot frame) pane)
-  (when (untangled-p (knot *application-frame*))
+  (when (untangledp (knot clim:*application-frame*))
     (format pane "Success!")))
 
+;;; Commands and allowed moves
+
 (define-pusheens-home-command (com-quit :menu t) ()
-  (frame-exit *application-frame*))
+  (clim:frame-exit clim:*application-frame*))
 
 (defmacro register-move (command section direction plane)
+  "Register a new gameplay move."
   (progn
     `(define-pusheens-home-command (,command :name t) ()
-       (make-move (knot *application-frame*) ,section ,direction ,plane))))
+       (apply-move (knot clim:*application-frame*) ,section ,direction ,plane))))
 
 (register-move com-F 'earth 'pull 0)
 (register-move com-Finv 'earth 'push 0)
@@ -227,16 +190,10 @@
 (register-move com-D 'fire 'pull 2)
 (register-move com-Dinv 'fire 'push 2)
 
+
 (defun main (argv)
-  "Help Pusheen untangle her knotted yarn!"
+  "Help untangle Pusheen from her yarn!"
   (declare (ignore argv))
-
-  (setf *simple-knot* (create-simple-knot))
-  ;; TODO replace with random moves to knot it up
-  (make-move *simple-knot* 'earth 'pull 0)
-
-  (let ((frame (make-application-frame 'pusheens-home :knot *simple-knot*)))
-    (run-frame-top-level frame))
-
-  ;; check if untangled after each move (untangled-p *simple-knot*)
-  nil)
+  (setf *simple-knot* (tangle-knot (make-simple-knot)))
+  (let ((frame (clim:make-application-frame 'pusheens-home :knot *simple-knot*)))
+    (clim:run-frame-top-level frame)))
