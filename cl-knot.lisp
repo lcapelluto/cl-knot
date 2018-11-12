@@ -7,7 +7,7 @@
 ;; The game knot, with the minimal number of beadies.
 (defparameter *simple-knot* nil)
 
-;;;; Beadies
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Beadies ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass beadie ()
   ((id :reader id
@@ -48,7 +48,7 @@
     (<= differences 1)))
 
 
-;;;; Knots
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Knots ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun make-simple-knot ()
   "Make a list of beadies with the simplest collections of qualities."
@@ -85,7 +85,7 @@
 
 (defun simple-beadie-p (qualities)
   "Does this collection of qualities belong in the simple knot?"
-  (<= (count 1 qualities)))
+  (<= (count 1 qualities) 1))
 
 (defun tangle-knot (knot)
   "Randomly tangle the knot."
@@ -105,7 +105,7 @@
     (format stream "~a~%" beadie)))
 
 
-;;;; Gameplay
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Gameplay ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro make-section-movement (name section2 section3)
   "Define the transformation for the given sections."
@@ -142,7 +142,7 @@
           :do (move-beadie beadie section direction)))
 
 
-;;;; Graphics
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (clim:define-application-frame pusheens-home ()
   ((knot :initarg :knot
