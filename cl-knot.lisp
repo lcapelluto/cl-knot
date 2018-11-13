@@ -47,6 +47,9 @@
   (let ((differences (apply '+ (id-difference beadie0 beadie1))))
     (<= differences 1)))
 
+(defun qualities (beadie)
+  "Return the qualities of the beadie as a list."
+  (list (earth beadie) (wind beadie) (fire beadie)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Knots ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -89,7 +92,7 @@
 
 (defun tangle-knot (knot)
   "Randomly tangle the knot."
-  ; TODO
+  ;; TODO
   (apply-move knot 'earth 'pull 0)
   knot)
 
@@ -121,7 +124,6 @@
              (t
               (error 'unknown direction :option direction))))))
 
-; TODO check parities
 (make-section-movement move-beadie-earth wind fire)
 (make-section-movement move-beadie-wind fire earth)
 (make-section-movement move-beadie-fire earth wind)

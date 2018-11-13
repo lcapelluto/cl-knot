@@ -14,25 +14,61 @@
                                             *standard-output*))
   (run-package-tests :package ':cl-knot-tests
                      :describe-failures t
-                     :interactive t))
+                     :verbose t
+                     :interactive nil))
 
-(defparameter *b0* (make-instance 'cl-knot::beadie :earth 0 :wind 1 :fire 2))
-(defparameter *b1* (make-instance 'cl-knot::beadie :earth 0 :wind 2 :fire 2))
-(defparameter *b2* (make-instance 'cl-knot::beadie :earth 1 :wind 2 :fire 2))
+(defparameter *b000* (make-instance 'cl-knot::beadie :earth 0 :wind 0 :fire 0))
+(defparameter *b012* (make-instance 'cl-knot::beadie :earth 0 :wind 1 :fire 2))
+(defparameter *b221* (make-instance 'cl-knot::beadie :earth 0 :wind 2 :fire 2))
+(defparameter *b122* (make-instance 'cl-knot::beadie :earth 1 :wind 2 :fire 2))
 
 (deftest test-simple-beadie-p ()
-  (is (cl-knot::simple-beadie-p (cl-knot::id *b0*)))
+  "Test that we can verify whether a beadie belongs in the simple knot."
+  (is (cl-knot::simple-beadie-p (cl-knot::id *b012*)))
   (is (not (cl-knot::simple-beadie-p (list 1 1 2)))))
 
 (deftest test-untangledp ()
+  "Test that we know if the knot is untangled."
   (is (cl-knot::untangledp (cl-knot::make-simple-knot))))
 
 (deftest test-simple-knot ()
+  "Test that the simple knot has the correct number of beadies, and can be made twice."
   (is (= 20 (length (cl-knot::make-simple-knot))))
   (is (= 20 (length (cl-knot::make-simple-knot)))))
 
 (deftest test-threadp ()
-  (is (cl-knot::threadp *b0* *b1*))
-  (is (cl-knot::threadp *b1* *b2*))
-  (is (cl-knot::threadp *b2* *b1*))
-  (is (not (cl-knot::threadp *b0* *b2*))))
+  "Test that we know which beadies are adjacent."
+  (is (cl-knot::threadp *b012* *b221*))
+  (is (cl-knot::threadp *b221* *b122*))
+  (is (cl-knot::threadp *b122* *b221*))
+  (is (not (cl-knot::threadp *b012* *b122*))))
+
+(defparameter *knot* (cl-knot::make-simple-knot))
+
+(deftest test-inverse-moves ()
+  "Test that each move is undone by its inverse."
+  (is (cl-knot::untangledp *knot*))
+  (cl-knot::apply-move *knot* 'cl-knot::earth 'cl-knot::pull 0)
+  (cl-knot::apply-move *knot* 'cl-knot::earth 'cl-knot::push 0)
+  (is (cl-knot::untangledp *knot*))
+  (cl-knot::apply-move *knot* 'cl-knot::wind 'cl-knot::push 0)
+  (cl-knot::apply-move *knot* 'cl-knot::wind 'cl-knot::pull 0)
+  (is (cl-knot::untangledp *knot*))
+  (cl-knot::apply-move *knot* 'cl-knot::fire 'cl-knot::push 0)
+  (cl-knot::apply-move *knot* 'cl-knot::fire 'cl-knot::pull 0)
+  (is (cl-knot::untangledp *knot*))
+  (cl-knot::apply-move *knot* 'cl-knot::wind 'cl-knot::pull 0)
+  (cl-knot::apply-move *knot* 'cl-knot::wind 'cl-knot::push 0)
+  (is (cl-knot::untangledp *knot*))
+  (cl-knot::apply-move *knot* 'cl-knot::fire 'cl-knot::pull 2)
+  (cl-knot::apply-move *knot* 'cl-knot::fire 'cl-knot::push 2))
+
+(deftest test-move-transformation ()
+  "Test that the transformations created by the moves are as expected."
+  ;; TODO
+  (cl-knot::move-beadie *b000* 'cl-knot::earth 'cl-knot::pull)
+  (is (equal (list 0 0 2) (cl-knot::qualities *b000*)))
+  (cl-knot::move-beadie *b000* 'cl-knot::wind 'cl-knot::pull)
+  (is (equal (list 0 0 0) (cl-knot::qualities *b000*)))
+  (cl-knot::move-beadie *b000* 'cl-knot::fire 'cl-knot::pull)
+  (is (equal (list 0 2 0) (cl-knot::qualities *b000*))))
