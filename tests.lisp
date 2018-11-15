@@ -17,7 +17,6 @@
                      :verbose t
                      :interactive nil))
 
-(defparameter *b000* (make-instance 'cl-knot::beadie :earth 0 :wind 0 :fire 0))
 (defparameter *b012* (make-instance 'cl-knot::beadie :earth 0 :wind 1 :fire 2))
 (defparameter *b221* (make-instance 'cl-knot::beadie :earth 0 :wind 2 :fire 2))
 (defparameter *b122* (make-instance 'cl-knot::beadie :earth 1 :wind 2 :fire 2))
@@ -65,10 +64,17 @@
 
 (deftest test-move-transformation ()
   "Test that the transformations created by the moves are as expected."
-  ;; TODO
-  (cl-knot::move-beadie *b000* 'cl-knot::earth 'cl-knot::pull)
-  (is (equal (list 0 0 2) (cl-knot::qualities *b000*)))
-  (cl-knot::move-beadie *b000* 'cl-knot::wind 'cl-knot::pull)
-  (is (equal (list 0 0 0) (cl-knot::qualities *b000*)))
-  (cl-knot::move-beadie *b000* 'cl-knot::fire 'cl-knot::pull)
-  (is (equal (list 0 2 0) (cl-knot::qualities *b000*))))
+  (let ((b000 (make-instance 'cl-knot::beadie :earth 0 :wind 0 :fire 0)))
+    (cl-knot::move-beadie b000 'cl-knot::earth 'cl-knot::pull)
+    (is (equal (list 0 2 0) (cl-knot::qualities b000)))
+    (cl-knot::move-beadie b000 'cl-knot::wind 'cl-knot::pull)
+    (is (equal (list 0 2 2) (cl-knot::qualities b000)))
+    (cl-knot::move-beadie b000 'cl-knot::fire 'cl-knot::pull)
+    (is (equal (list 2 2 2) (cl-knot::qualities b000))))
+  (let ((b122 (make-instance 'cl-knot::beadie :earth 1 :wind 2 :fire 2)))
+    (cl-knot::move-beadie b122 'cl-knot::wind 'cl-knot::push)
+    (is (equal (list 0 2 1) (cl-knot::qualities b122)))
+    (cl-knot::move-beadie b122 'cl-knot::earth 'cl-knot::push)
+    (is (equal (list 0 1 0) (cl-knot::qualities b122)))
+    (cl-knot::move-beadie b122 'cl-knot::fire 'cl-knot::push)
+    (is (equal (list 1 0 0) (cl-knot::qualities b122)))))

@@ -92,8 +92,15 @@
 
 (defun tangle-knot (knot)
   "Randomly tangle the knot."
-  ;; TODO
-  (apply-move knot 'earth 'pull 0)
+  (let
+      ((sections (list 'earth 'wind 'fire))
+       (directions (list 'pull 'push))
+       (planes (list 0 2)))
+    (dotimes (i 50)
+      (apply-move knot
+                  (nth (random 3) sections)
+                  (nth (random 2) directions)
+                  (nth (random 2) planes))))
   knot)
 
 (defun untangledp (knot)
@@ -126,7 +133,7 @@
 
 (make-section-movement move-beadie-earth wind fire)
 (make-section-movement move-beadie-wind fire earth)
-(make-section-movement move-beadie-fire earth wind)
+(make-section-movement move-beadie-fire wind earth)
 
 (defun move-beadie (beadie section direction)
   "Modify a single beadie's location as part of a move."
@@ -156,10 +163,10 @@
         :width 600
         :display-function 'display-pusheens-home)
    (int :interactor
-        :height 400
+        :height 150
         :width 600))
   (:layouts
-   (default (clim:horizontally ()
+   (default (clim:vertically ()
               app int))))
 
 (defun display-pusheens-home (frame pane)
@@ -173,25 +180,30 @@
 (define-pusheens-home-command (com-quit :menu t) ()
   (clim:frame-exit clim:*application-frame*))
 
+(define-pusheens-home-command (com-play :menu t) ()
+  (tangle-knot (knot clim:*application-frame*)))
+
 (defmacro register-move (command section direction plane)
   "Register a new gameplay move."
   (progn
     `(define-pusheens-home-command (,command :name t) ()
        (apply-move (knot clim:*application-frame*) ,section ,direction ,plane))))
 
+;;; Direction mappings swap from L to R, F to B, and D to U so that the transformations
+;;; can be independent of the plane.
+
 (register-move com-F 'earth 'pull 0)
 (register-move com-Finv 'earth 'push 0)
-(register-move com-B 'earth 'pull 2)
-(register-move com-Binv 'earth 'push 2)
-(register-move com-L 'wind 'pull 0)
-(register-move com-Linv 'wind 'push 0)
-(register-move com-R 'wind 'pull 2)
-(register-move com-Rinv 'wind 'push 2)
-(register-move com-U 'fire 'pull 0)
-(register-move com-Uinv 'fire 'push 0)
-(register-move com-D 'fire 'pull 2)
-(register-move com-Dinv 'fire 'push 2)
-
+(register-move com-B 'earth 'push 2)
+(register-move com-Binv 'earth 'pull 2)
+(register-move com-R 'wind 'pull 0)
+(register-move com-Rinv 'wind 'push 0)
+(register-move com-L 'wind 'push 2)
+(register-move com-Linv 'wind 'pull 2)
+(register-move com-D 'fire 'pull 0)
+(register-move com-Dinv 'fire 'push 0)
+(register-move com-U 'fire 'pull 2)
+(register-move com-Uinv 'fire 'push 2)
 
 (defun main (argv)
   "Help untangle Pusheen from her yarn!"
