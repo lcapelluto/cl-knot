@@ -22,6 +22,9 @@
          :accessor fire
          :documentation "")))
 
+(defmacro make-beadie (earth wind fire)
+  `(make-instance 'beadie :earth ,earth :wind ,wind :fire ,fire))
+
 (defmethod initialize-instance :after ((object beadie) &key)
   (setf (slot-value object 'id)
         (list (earth object) (wind object) (fire object))))
@@ -57,9 +60,7 @@
   "Make a list of beadies with the simplest collections of qualities."
   (let ((curr (list 0 0 0)))
     (loop
-      :collect (make-instance 'beadie :earth (first curr)
-                                      :wind (second curr)
-                                      :fire (third curr))
+      :collect (make-beadie (first curr) (second curr) (third curr))
       :do (setf curr (update-simple-qualities curr))
       :until (null curr))))
 
