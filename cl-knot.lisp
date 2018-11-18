@@ -42,8 +42,8 @@
 
 (defun id-difference (beadie0 beadie1)
   "Return the absolute difference of the beadie IDs, per index."
-  (loop :for index :in '(0 1 2)
-        :collect (id-index-difference index beadie0 beadie1)))
+  (dolist (index '(0 1 2))
+    :collect (id-index-difference index beadie0 beadie1)))
 
 (defun threadp (beadie0 beadie1)
   "Is there a thread between the two beadies?"
@@ -67,11 +67,11 @@
 (defun update-simple-qualities (qualities)
   "Return the next logical quality trio in the simple knot."
   (loop :do
-    (setf qualities (update-quality-index qualities 2))
+    (setf qualities (update-quality-index qualities))
         :until (or (null qualities) (simple-beadie-p qualities)))
   qualities)
 
-(defun update-quality-index (qualities index)
+(defun update-quality-index (qualities &optional (index 2))
   "Increase, like in a ternary string, the list of qualities, starting at INDEX and
   moving to the next significant index if needed."
   (let ((new-val (+ 1 (nth index qualities))))
@@ -112,7 +112,7 @@
         :finally (return t)))
 
 (defun print-knot (knot stream)
-  (loop :for beadie :in knot :do
+  (dolist (beadie knot)
     (format stream "~a~%" beadie)))
 
 
@@ -147,9 +147,9 @@
 
 (defun apply-move (knot section direction plane)
   "Act a complete move upon the knot structure."
-  (loop :for beadie :in knot
-        :when (= plane (funcall section beadie))
-          :do (move-beadie beadie section direction)))
+  (dolist (beadie knot)
+    :when (= plane (funcall section beadie))
+    :do (move-beadie beadie section direction)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,11 +157,11 @@
 (clim:define-application-frame pusheens-home ()
   ((knot :initarg :knot
          :accessor knot))
-  (:pointer-documentation t)
   (:panes
    (app :application
         :height 400
         :width 600
+        :scroll-bars nil
         :display-function 'display-pusheens-home)
    (int :interactor
         :height 150
@@ -186,9 +186,8 @@
 
 (defmacro register-move (command section direction plane)
   "Register a new gameplay move."
-  (progn
-    `(define-pusheens-home-command (,command :name t) ()
-       (apply-move (knot clim:*application-frame*) ,section ,direction ,plane))))
+  `(define-pusheens-home-command (,command :name t) ()
+     (apply-move (knot clim:*application-frame*) ,section ,direction ,plane)))
 
 ;;; Direction mappings swap from L to R, F to B, and D to U so that the transformations
 ;;; can be independent of the plane.
