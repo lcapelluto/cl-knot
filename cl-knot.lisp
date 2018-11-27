@@ -216,14 +216,35 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
         :display-function 'display-pusheens-home)
    (int :interactor
         :height 150
-        :width 600))
+        :width 600)
+   (F   :push-button
+        :label "F"
+        :activate-callback #'(lambda (x)
+                               (declare (ignore x))
+                               (format t "Hit the F button."))))
   (:layouts
    (default (clim:vertically ()
-              app int))))
+              app (clim:horizontally () int
+                                     F)))))
+
+
+;; (redisplay-frame-pane *application-frame*
+;;                         (get-frame-pane *application-frame* 'render-output) :force-p t)
+;; clim:make-rgb-color
+
+(defun draw-circle (knot stream)
+  (let* ((first-beadie (first knot))
+         (x (+ (earth first-beadie) 200))
+         (y (+ (wind first-beadie) 100)))
+    (clim:with-drawing-options (stream :line-thickness 3 :line-cap-shape :round)
+      (clim:draw-text* stream (format nil "test") 20 30)
+      (clim:draw-circle* stream x y 25 :filled nil))))
+
 
 (defun display-pusheens-home (frame pane)
   "How to display Pusheen's Home."
   (format pane "~a" (knot frame))
+  (draw-circle (knot frame) pane)
   (when (untangledp (knot clim:*application-frame*))
     (format pane "Success!")))
 
