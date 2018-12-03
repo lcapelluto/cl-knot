@@ -111,14 +111,14 @@
 (defun tangle-knot (knot)
   "Randomly tangle the knot."
   (let
-      ((sections (list 'earth 'wind 'fire))
-       (directions (list 'pull 'push))
-       (planes (list 0 2)))
+      ((axes (list 'x 'y 'z))
+       (pos (list 0 2))
+       (directions (list 'pull 'push)))
     (dotimes (i 50)
       (apply-move knot
-                  (nth (random 3) sections)
-                  (nth (random 2) directions)
-                  (nth (random 2) planes))))
+                  (make-plane  (nth (random 3) axes)
+                               (nth (random 2) pos))
+                  (nth (random 2) directions))))
   knot)
 
 (defgeneric untangledp (input)
@@ -187,27 +187,31 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (make-axis-rotation y)
 (make-axis-rotation z)
 
-(defgeneric apply-move (knot section direction plane)
+(defgeneric apply-move (knot plane direction)
   (:documentation "Act a complete move upon the knot structure.")
 
-  (:method ((knot knot) section direction plane)
+  (:method ((knot knot) plane direction)
     (dolist (beadie (knot-beadies knot))
-      (cond ((and  (equal section 'earth)
-                   (= plane (x-pos beadie)))
+      (cond ((and  (equal (plane-axis plane) 'x)
+                   (= (plane-position plane) (x-pos beadie)))
              (rotate-x knot beadie direction))
-            ((and (equal section 'wind)
-                  (= plane (y-pos beadie)))
+            ((and (equal (plane-axis plane) 'y)
+                  (= (plane-position plane) (y-pos beadie)))
              (rotate-y knot beadie direction))
-            ((and (equal section 'fire)
-                  (= plane (z-pos beadie)))
+            ((and (equal (plane-axis plane) 'z)
+                  (= (plane-position plane) (z-pos beadie)))
              (rotate-z knot beadie direction)))))
 
-  (:method ((knot tiny-knot) section direction plane)
+  (:method ((knot tiny-knot) plane direction)
     ;; The normal dimension is 2, but the tiny knot is, well, tiny.
-    (when (= plane 2)
-      (call-next-method knot section direction 1))
+    (when (= (plane-position plane) 2)
+      (call-next-method knot (make-plane (plane-axis plane) 1) direction))
     (call-next-method)))
 
+(defstruct (plane (:constructor make-plane (axis position)))
+  "An infinite 2D plane, perpendicular to the AXIS, X Y or Z, given by the POSITION along that axis."
+  (axis 'x)
+  (position 0 :type integer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -297,26 +301,26 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (define-pusheens-home-command (com-play :menu t) ()
   (tangle-knot (knot clim:*application-frame*)))
 
-(defmacro register-move (command section direction plane)
+(defmacro register-move (command axis pos direction)
   "Register a new gameplay move."
   `(define-pusheens-home-command (,command :name t) ()
-     (apply-move (knot clim:*application-frame*) ,section ,direction ,plane)))
+     (apply-move (knot clim:*application-frame*) (make-plane ,axis ,pos) ,direction)))
 
 ;; Direction mappings swap from L to R, F to B, and D to U so that the transformations
 ;; can be independent of the plane.
 
-(register-move com-L 'earth 'pull 0)
-(register-move com-Linv 'earth 'push 0)
-(register-move com-R 'earth 'push 2)
-(register-move com-Rinv 'earth 'pull 2)
-(register-move com-D 'wind 'pull 0)
-(register-move com-Dinv 'wind 'push 0)
-(register-move com-U 'wind 'push 2)
-(register-move com-Uinv 'wind 'pull 2)
-(register-move com-F 'fire 'pull 0)
-(register-move com-Finv 'fire 'push 0)
-(register-move com-B 'fire 'pull 2)
-(register-move com-Binv 'fire 'push 2)
+(register-move com-L 'x 0 'pull)
+(register-move com-Linv 'x 0 'push)
+(register-move com-R 'x 2 'push)
+(register-move com-Rinv 'x 2 'pull)
+(register-move com-D 'y 0 'pull)
+(register-move com-Dinv 'y 0 'push)
+(register-move com-U 'y 2 'push)
+(register-move com-Uinv 'y 2 'pull)
+(register-move com-F 'z 0 'pull)
+(register-move com-Finv 'z 0 'push)
+(register-move com-B  'z 2 'pull)
+(register-move com-Binv 'z 2 'push)
 
 
 (defun show-welcome ()
@@ -332,7 +336,6 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   (declare (ignore argv))
   (show-welcome)
 
-  (let* (;(gameplay-knot (tangle-knot (make-instance 'tiny-knot)))
-         (gameplay-knot (make-instance 'tiny-knot))
+  (let* ((gameplay-knot (tangle-knot (make-instance 'tiny-knot)))
          (frame (clim:make-application-frame 'pusheens-home :knot gameplay-knot)))
     (clim:run-frame-top-level frame)))
