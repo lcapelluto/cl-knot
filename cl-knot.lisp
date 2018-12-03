@@ -212,6 +212,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *beadie-scale* 150)
+(defparameter *beadie-size* 10)
 (defparameter *x-offset* 300)
 (defparameter *y-offset* 275)
 (defparameter *rx-theta* (/ pi 5))
@@ -304,24 +305,33 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 ;; Direction mappings swap from L to R, F to B, and D to U so that the transformations
 ;; can be independent of the plane.
 
-(register-move com-F 'earth 'pull 0)
-(register-move com-Finv 'earth 'push 0)
-(register-move com-B 'earth 'push 2)
-(register-move com-Binv 'earth 'pull 2)
-(register-move com-R 'wind 'pull 0)
-(register-move com-Rinv 'wind 'push 0)
-(register-move com-L 'wind 'push 2)
-(register-move com-Linv 'wind 'pull 2)
-(register-move com-D 'fire 'pull 0)
-(register-move com-Dinv 'fire 'push 0)
-(register-move com-U 'fire 'pull 2)
-(register-move com-Uinv 'fire 'push 2)
+(register-move com-L 'earth 'pull 0)
+(register-move com-Linv 'earth 'push 0)
+(register-move com-R 'earth 'push 2)
+(register-move com-Rinv 'earth 'pull 2)
+(register-move com-D 'wind 'pull 0)
+(register-move com-Dinv 'wind 'push 0)
+(register-move com-U 'wind 'push 2)
+(register-move com-Uinv 'wind 'pull 2)
+(register-move com-F 'fire 'pull 0)
+(register-move com-Finv 'fire 'push 0)
+(register-move com-B 'fire 'pull 2)
+(register-move com-Binv 'fire 'push 2)
 
 
+(defun show-welcome ()
+  (format t "~&~
+***********************************
+*       W E L C O M E   T O       *~%~
+*   P U S H E E N ' S   H O M E   *~%~
+***********************************~%")
+  nil)
 
 (defun main (argv)
   "Help untangle Pusheen from her yarn!"
   (declare (ignore argv))
+  (show-welcome)
+
   (let* (;(gameplay-knot (tangle-knot (make-instance 'tiny-knot)))
          (gameplay-knot (make-instance 'tiny-knot))
          (frame (clim:make-application-frame 'pusheens-home :knot gameplay-knot)))
