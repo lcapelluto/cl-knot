@@ -219,6 +219,8 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defparameter *height* 400)
+(defparameter *width* 700)
 (defparameter *beadie-scale* 150)
 (defparameter *beadie-size* 10)
 (defparameter *x-offset* 500)
@@ -285,21 +287,23 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   "How to display Pusheen's home."
   (draw-threads (knot frame) pane)
   (draw-beadies (knot frame) pane)
-  (when (untangledp (knot clim:*application-frame*))
-    (format pane "Success!")))
+  (let ((text "Use Rubik's cube notation to untangle the knot"))
+    (when (untangledp (knot clim:*application-frame*))
+      (setf text "Success!"))
+    (clim:draw-text* pane text (/ *width* 3) *height*)))
 
 (clim:define-application-frame pusheens-home ()
   ((knot :initarg :knot
          :accessor knot))
   (:panes
    (app :application
-        :height 400
-        :width 700
+        :height *height*
+        :width *width*
         :scroll-bars nil
         :display-function 'display-pusheens-home)
    (int :interactor
-        :height 150
-        :width 700)
+        :height (/ *height* 4)
+        :width *width*)
    (F   :push-button
         :label "F"
         :activate-callback #'(lambda (x)
