@@ -7,8 +7,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Beadies ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass beadie ()
-  ((id :reader id
-       :documentation "A unique constant identifier.")
+  ((solved-position :reader solved-pos
+                    :documentation "A list specifying the untangled X Y Z positions of this beadie.")
    (x-position :initarg :x-position
                :accessor x-pos
                :documentation "The beadie location on the x-axis.")
@@ -23,38 +23,46 @@
   `(make-instance 'beadie :x-position ,x :y-position ,y :z-position ,z))
 
 (defmethod initialize-instance :after ((object beadie) &key)
-  (setf (slot-value object 'id)
+  (setf (slot-value object 'solved-position)
         (list (x-pos object) (y-pos object) (z-pos object))))
 
 (defmethod print-object ((object beadie) stream)
   (print-unreadable-object (object stream :type t)
-    (format stream "~D:  ~D ~D ~D" (id object)
+    (format stream "~D:  ~D ~D ~D" (solved-pos object)
             (x-pos object)
             (y-pos object)
             (z-pos object))))
 
-(defun id-index-difference (index beadie0 beadie1)
-  "Return the difference of the INDEX of ID between the beadies."
-  (abs (- (nth index (id beadie0)) (nth index (id beadie1)))))
+(defun solution-axis-difference (axis beadie0 beadie1)
+  "Return the difference between the values of the solution position of the beadies along axis AXIS. AXIS is an integer, either 0=>X 1=>Y or 2=>Z."
+  (abs (- (nth axis (solved-pos beadie0)) (nth axis (solved-pos beadie1)))))
 
-(defun id-difference (beadie0 beadie1)
-  "Return the absolute difference of the beadie IDs, per index."
-  (loop :for index :in '(0 1 2)
-    :collect (id-index-difference index beadie0 beadie1)))
-
-(defun threadp (beadie0 beadie1)
-  "Is there a thread between the two beadies?"
-  (let ((differences (apply '+ (id-difference beadie0 beadie1))))
-    (<= differences 1)))
+(defun solution-difference (beadie0 beadie1)
+  "Return the absolute difference of the beadie's solution position, per index."
+  (loop :for axis :in '(0 1 2)
+    :collect (solution-axis-difference axis beadie0 beadie1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Knots ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass knot ()
-  ((beadies :accessor knot-beadies
+  ((beadies :accessor beadies
             :documentation "The beadies which are part of the knot.")
    (center :accessor center
-           :documentation "Central point to rotate beadies around."))
-  (:documentation "The game knot which we attempt to untangle Pusheen from"))
+           :documentation "Geometrically central point of the knot around which to rotate beadies."))
+  (:documentation "The game knot from which we attempt to untangle Pusheen!"))
+
+(defclass tiny-knot (knot)
+  ((beadies :initform (make-tiny-knot))
+   (center :initform (make-point 0.5 0.5 0.5))))
+
+(defun make-tiny-knot ()
+  "Make a list of just 8 beadies, matching a 2x2x2 cube."
+  (let ((knot nil))
+    (loop :for x :in (list 0 1) :do
+      (loop :for y :in (list 0 1) :do
+        (loop :for z :in (list 0 1) :do
+          (push (make-beadie x y z) knot))))
+    knot))
 
 (defclass simple-knot (knot)
   ((beadies :initform (make-simple-knot))
@@ -95,50 +103,46 @@
   "Does this collection of qualities belong in the simple knot?"
   (<= (count 1 qualities) 1))
 
-(defclass tiny-knot (knot)
-  ((beadies :initform (make-tiny-knot))
-   (center :initform (make-point 0.5 0.5 0.5))))
+(defgeneric threadp (knot beadie0 beadie1)
+  (:documentation "Is there a thread between the two beadies, i.e. are they neighbors?")
 
-(defun make-tiny-knot ()
-  "Make a list of just 8 beadies, matching a 2x2x2 cube."
-  (let ((knot nil))
-    (loop :for x :in (list 0 1) :do
-      (loop :for y :in (list 0 1) :do
-        (loop :for z :in (list 0 1) :do
-          (push (make-beadie x y z) knot))))
+  (:method ((knot knot) beadie0 beadie1)
+    (let ((differences (apply '+ (solution-difference beadie0 beadie1))))
+      (<= differences 1))))
+
+(defgeneric tangle-knot (knot)
+  (:documentation "Randomly tangle the knot.")
+
+  (:method ((knot knot))
+    (let
+        ((axes (list 'x 'y 'z))
+         (pos (list 0 2))
+         (directions (list 'pull 'push)))
+      (dotimes (i 50)
+        (apply-move knot
+                    (make-plane  (nth (random 3) axes)
+                                 (nth (random 2) pos))
+                    (nth (random 2) directions))))
     knot))
 
-(defun tangle-knot (knot)
-  "Randomly tangle the knot."
-  (let
-      ((axes (list 'x 'y 'z))
-       (pos (list 0 2))
-       (directions (list 'pull 'push)))
-    (dotimes (i 50)
-      (apply-move knot
-                  (make-plane  (nth (random 3) axes)
-                               (nth (random 2) pos))
-                  (nth (random 2) directions))))
-  knot)
-
 (defgeneric untangledp (input)
-  (:documentation "T if the input is in the solution state, NIL otherwise."))
+  (:documentation "T if the input is in the solution state, NIL otherwise.")
 
-(defmethod untangledp ((beadie beadie))
-  "Is the beadie in the solution state?"
-  (equal (id beadie)
-         (list (x-pos beadie) (y-pos beadie) (z-pos beadie))))
+  (:method ((beadie beadie))
+    "Is the beadie in the solution state?"
+    (equal (solved-pos beadie)
+           (list (x-pos beadie) (y-pos beadie) (z-pos beadie))))
 
-(defmethod untangledp ((knot knot))
-  "Is the knot untangled (i.e. in the solution state)?"
-  (loop :for beadie :in (knot-beadies knot)
-        :when (not (untangledp beadie))
-          :do (return nil)
-        :finally (return t)))
+  (:method ((knot knot))
+    "Is the knot untangled (i.e. in the solution state)?"
+    (loop :for beadie :in (beadies knot)
+          :when (not (untangledp beadie))
+            :do (return nil)
+          :finally (return t))))
 
 (defmethod print-object ((object knot) stream)
   (print-unreadable-object (object stream :type t)
-    (dolist (beadie (knot-beadies object))
+    (dolist (beadie (beadies object))
       (format stream "~a~%" beadie))))
 
 (defstruct (point (:constructor make-point (x y z)))
@@ -150,7 +154,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Gameplay ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro make-axis-rotation (axis)
-  "Define a generic function and method specialized on the knot class to rotate a given beadie pi/2 either clockwise or counterclockwise around AXIS. AXIS can be X, Y or Z.
+  "Define a generic function and method specialized on the knot class to rotate a given beadie pi/2 either clockwise or counterclockwise around AXIS. AXIS can be the symbol X, Y or Z.
 
 The defined function is called ROTATE-AXIS where AXIS is replaced by its value, and it takes a KNOT instance, BEADIE instance, and DIRECTION (either 'pull or 'push) as input."
   (let* (;; Define the first and second axis such that axis1 curl axis2 is AXIS
@@ -191,7 +195,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   (:documentation "Act a complete move upon the knot structure.")
 
   (:method ((knot knot) plane direction)
-    (dolist (beadie (knot-beadies knot))
+    (dolist (beadie (beadies knot))
       (cond ((and  (equal (plane-axis plane) 'x)
                    (= (plane-position plane) (x-pos beadie)))
              (rotate-x knot beadie direction))
@@ -264,7 +268,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defun draw-beadies (knot stream)
   "Draw each beadie, and fill it in with color if it's in its solved location."
-  (dolist (beadie (knot-beadies knot))
+  (dolist (beadie (beadies knot))
     (let ((x (beadie-to-sheet-x beadie))
           (y (beadie-to-sheet-y beadie))
           (fillp (untangledp beadie)))
@@ -273,18 +277,16 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
         (when fillp
           (clim:draw-circle* stream x y (- *beadie-size* 3) :filled t :ink *teal*))))))
 
-(defgeneric draw-threads (knot stream)
-  (:documentation "Draw threads between beadies which are adjacent.")
-  
-  (:method ((knot knot) stream)
-    (dolist (beadie0 (knot-beadies knot))
-      (dolist (beadie1 (knot-beadies knot))
-        (when (threadp beadie0 beadie1)
-          (clim:draw-line* stream 
-                           (beadie-to-sheet-x beadie0)
-                           (beadie-to-sheet-y beadie0)
-                           (beadie-to-sheet-x beadie1)
-                           (beadie-to-sheet-y beadie1)))))))
+(defun draw-threads (knot stream)
+  "Draw threads between beadies which are adjacent."
+  (dolist (beadie0 (beadies knot))
+    (dolist (beadie1 (beadies knot))
+      (when (threadp knot beadie0 beadie1)
+        (clim:draw-line* stream
+                         (beadie-to-sheet-x beadie0)
+                         (beadie-to-sheet-y beadie0)
+                         (beadie-to-sheet-x beadie1)
+                         (beadie-to-sheet-y beadie1))))))
 
 (defun display-pusheens-home (frame pane)
   "How to display Pusheen's Home."
