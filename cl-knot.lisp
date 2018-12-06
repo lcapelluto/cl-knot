@@ -221,47 +221,28 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defparameter *beadie-scale* 150)
 (defparameter *beadie-size* 10)
-(defparameter *x-offset* 300)
-(defparameter *y-offset* 275)
+(defparameter *x-offset* 500)
+(defparameter *y-offset* 100)
 (defparameter *rx-theta* (/ pi 5))
 (defparameter *ry-theta* (/ (* 5 pi) 6))
 (defparameter *rz-theta* 0)
 (defparameter *teal* (clim:make-rgb-color (/ 10 225) (/ 212 255) (/ 212 255)))
-
-(clim:define-application-frame pusheens-home ()
-  ((knot :initarg :knot
-         :accessor knot))
-  (:panes
-   (app :application
-        :height 400
-        :width 600
-        :scroll-bars nil
-        :display-function 'display-pusheens-home)
-   (int :interactor
-        :height 150
-        :width 600)
-   (F   :push-button
-        :label "F"
-        :activate-callback #'(lambda (x)
-                               (declare (ignore x))
-                               (format t "Hit the F button."))))
-  (:layouts
-   (default (clim:vertically ()
-              app (clim:horizontally () int
-                                     F)))))
+(defparameter *light-gray* (clim:make-rgb-color (/ 200 225) (/ 232 255) (/ 232 255)))
 
 (defun beadie-to-sheet-x (beadie)
   "Transform the beadie's X Y Z coordinates to the X coordinates of the sheet to be used by CLIM."
-  (let* ((rotated-x (- (* (x-pos beadie) (cos *rx-theta*))
-                       (* (z-pos beadie) (sin *rx-theta*))))
+  (let* ((rotated-x (- (* (x-pos beadie) (cos *ry-theta*))
+                       (* (z-pos beadie) (sin *ry-theta*))))
          (scaled-x (* *beadie-scale* rotated-x))
          (offset-x (+ scaled-x *x-offset*)))
     (floor offset-x)))
 
 (defun beadie-to-sheet-y (beadie)
   "Transform the beadie's X Y Z coordinates to the Y coordinates of the sheet to be used by CLIM."
-  (let* ((rotated-y (- (* (y-pos beadie) (cos *ry-theta*))
-                       (* (z-pos beadie) (sin *ry-theta*))))
+  (let* ((z (+ (* (x-pos beadie) (sin *ry-theta*))
+               (* (z-pos beadie) (cos *ry-theta*))))
+         (rotated-y (- (* (y-pos beadie) (cos *rx-theta*))
+                       (* z (sin *rx-theta*))))
          (scaled-y (* *beadie-scale* rotated-y))
          (offset-y (+ scaled-y *y-offset*)))
     (floor offset-y)))
@@ -272,7 +253,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
     (let ((x (beadie-to-sheet-x beadie))
           (y (beadie-to-sheet-y beadie))
           (fillp (untangledp beadie)))
-      (clim:with-drawing-options (stream :line-thickness 2 :line-cap-shape :round)
+      (clim:with-drawing-options (stream :line-thickness 3)
         (clim:draw-circle* stream x y *beadie-size* :filled fillp)
         (when fillp
           (clim:draw-circle* stream x y (- *beadie-size* 3) :filled t :ink *teal*))))))
@@ -282,6 +263,18 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   (dolist (beadie0 (beadies knot))
     (dolist (beadie1 (beadies knot))
       (when (threadp knot beadie0 beadie1)
+        (let ((b0-sol (make-beadie (first (solved-pos beadie0))
+                                   (second (solved-pos beadie0))
+                                   (third (solved-pos beadie0))))
+              (b1-sol (make-beadie (first (solved-pos beadie1))
+                                   (second (solved-pos beadie1))
+                                   (third (solved-pos beadie1)))))
+          (clim:draw-line* stream
+                           (beadie-to-sheet-x b0-sol)
+                           (beadie-to-sheet-y b0-sol)
+                           (beadie-to-sheet-x b1-sol)
+                           (beadie-to-sheet-y b1-sol)
+                           :ink *light-gray*))
         (clim:draw-line* stream
                          (beadie-to-sheet-x beadie0)
                          (beadie-to-sheet-y beadie0)
@@ -289,11 +282,33 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
                          (beadie-to-sheet-y beadie1))))))
 
 (defun display-pusheens-home (frame pane)
-  "How to display Pusheen's Home."
-  (draw-beadies (knot frame) pane)
+  "How to display Pusheen's home."
   (draw-threads (knot frame) pane)
+  (draw-beadies (knot frame) pane)
   (when (untangledp (knot clim:*application-frame*))
     (format pane "Success!")))
+
+(clim:define-application-frame pusheens-home ()
+  ((knot :initarg :knot
+         :accessor knot))
+  (:panes
+   (app :application
+        :height 400
+        :width 700
+        :scroll-bars nil
+        :display-function 'display-pusheens-home)
+   (int :interactor
+        :height 150
+        :width 700)
+   (F   :push-button
+        :label "F"
+        :activate-callback #'(lambda (x)
+                               (declare (ignore x))
+                               (format t "Hit the F button."))))
+  (:layouts
+   (default (clim:vertically ()
+              app (clim:horizontally () int
+                                     F)))))
 
 ;;; Commands and allowed moves
 
