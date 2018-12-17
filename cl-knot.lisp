@@ -28,19 +28,18 @@
 
 (defmethod print-object ((object beadie) stream)
   (print-unreadable-object (object stream :type t)
-    (format stream "~D:  ~D ~D ~D" (solved-pos object)
+    (format stream "~D:  ~D ~D ~D"
+            (solved-pos object)
             (x-pos object)
             (y-pos object)
             (z-pos object))))
 
-(defun solution-axis-difference (axis beadie0 beadie1)
-  "Return the difference between the values of the solution position of the beadies along axis AXIS. AXIS is an integer, either 0=>X 1=>Y or 2=>Z."
-  (abs (- (nth axis (solved-pos beadie0)) (nth axis (solved-pos beadie1)))))
-
 (defun solution-difference (beadie0 beadie1)
-  "Return the absolute difference of the beadie's solution position, per index."
+  "Return the vector absolute difference of the beadies' solved position."
   (loop :for axis :in '(0 1 2)
-    :collect (solution-axis-difference axis beadie0 beadie1)))
+        ;; Collect the absolute difference for X Y and Z axes
+        :collect (abs (- (nth axis (solved-pos beadie0))
+                         (nth axis (solved-pos beadie1))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Knots ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -77,15 +76,14 @@
       :until (null curr))))
 
 (defun update-simple-qualities (qualities)
-  "Return the next logical quality trio in the simple knot."
+  "Return the next trio of qualities which belong in a simple knot."
   (loop :do
     (setf qualities (update-quality-index qualities))
         :until (or (null qualities) (simple-beadie-p qualities)))
   qualities)
 
 (defun update-quality-index (qualities &optional (index 2))
-  "Increase, like in a ternary string, the list of qualities, starting at INDEX and
-  moving to the next significant index if needed."
+  "Increase, like in a ternary string, the list of qualities, starting at INDEX and moving to the next significant index if needed."
   (let ((new-val (+ 1 (nth index qualities))))
     (cond
       ((< new-val 3)
@@ -100,7 +98,7 @@
     qualities))
 
 (defun simple-beadie-p (qualities)
-  "Does this collection of qualities belong in the simple knot?"
+  "Does this collection of qualities belong in the simple knot? The simple knot excludes middle pieces, so the beadie is a simple beadie only if the beadie's position has at most one coordinate valued 1. For example: (0 1 2) is a simple beadie but (0 1 1) is not."
   (<= (count 1 qualities) 1))
 
 (defgeneric threadp (knot beadie0 beadie1)
@@ -227,7 +225,6 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (defparameter *y-offset* 100)
 (defparameter *rx-theta* (/ pi 5))
 (defparameter *ry-theta* (/ (* 5 pi) 6))
-(defparameter *rz-theta* 0)
 (defparameter *teal* (clim:make-rgb-color (/ 10 225) (/ 212 255) (/ 212 255)))
 (defparameter *light-gray* (clim:make-rgb-color (/ 200 225) (/ 232 255) (/ 232 255)))
 
@@ -263,6 +260,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (defun draw-threads (knot stream)
   "Draw threads between beadies which are adjacent."
   (dolist (beadie0 (beadies knot))
+    ;; Inefficient! Needs to be fixed but OK for so few beadies.
     (dolist (beadie1 (beadies knot))
       (when (threadp knot beadie0 beadie1)
         (let ((b0-sol (make-beadie (first (solved-pos beadie0))
@@ -271,12 +269,14 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
               (b1-sol (make-beadie (first (solved-pos beadie1))
                                    (second (solved-pos beadie1))
                                    (third (solved-pos beadie1)))))
+          ;; Sketch in some gray lines to define the knot's shape
           (clim:draw-line* stream
                            (beadie-to-sheet-x b0-sol)
                            (beadie-to-sheet-y b0-sol)
                            (beadie-to-sheet-x b1-sol)
                            (beadie-to-sheet-y b1-sol)
                            :ink *light-gray*))
+        ;; Draw the thread between these beadies
         (clim:draw-line* stream
                          (beadie-to-sheet-x beadie0)
                          (beadie-to-sheet-y beadie0)
@@ -303,16 +303,10 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
         :display-function 'display-pusheens-home)
    (int :interactor
         :height (/ *height* 4)
-        :width *width*)
-   (F   :push-button
-        :label "F"
-        :activate-callback #'(lambda (x)
-                               (declare (ignore x))
-                               (format t "Hit the F button."))))
+        :width *width*))
   (:layouts
    (default (clim:vertically ()
-              app (clim:horizontally () int
-                                     F)))))
+              app (clim:horizontally () int)))))
 
 ;;; Commands and allowed moves
 
@@ -327,8 +321,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   `(define-pusheens-home-command (,command :name t) ()
      (apply-move (knot clim:*application-frame*) (make-plane ,axis ,pos) ,direction)))
 
-;; Direction mappings swap from L to R, F to B, and D to U so that the transformations
-;; can be independent of the plane.
+;; Define all the gameplay moves, using standard Rubik's cube notation. Direction mappings (clockwise <-> push, counterclockwise <-> pull) swap from L to R, F to B, and D to U so that the transformations can be independent of the plane.
 
 (register-move com-L 'x 0 'pull)
 (register-move com-Linv 'x 0 'push)
@@ -343,6 +336,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (register-move com-B  'z 2 'pull)
 (register-move com-Binv 'z 2 'push)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Entry ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun show-welcome ()
   (format t "~&~
