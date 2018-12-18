@@ -20,6 +20,7 @@
                :documentation "The beadie location on the z-axis.")))
 
 (defmacro make-beadie (x y z)
+  (every #'numberp (list x y z))
   `(make-instance 'beadie :x-position ,x :y-position ,y :z-position ,z))
 
 (defmethod initialize-instance :after ((object beadie) &key)
@@ -36,6 +37,8 @@
 
 (defun solution-difference (beadie0 beadie1)
   "Return the vector absolute difference of the beadies' solved position."
+  (check-type beadie0 beadie)
+  (check-type beadie1 beadie)
   (loop :for axis :in '(0 1 2)
         ;; Collect the absolute difference for X Y and Z axes
         :collect (abs (- (nth axis (solved-pos beadie0))
@@ -99,6 +102,7 @@
 
 (defun simple-beadie-p (qualities)
   "Does this collection of qualities belong in the simple knot? The simple knot excludes middle pieces, so the beadie is a simple beadie only if the beadie's position has at most one coordinate valued 1. For example: (0 1 2) is a simple beadie but (0 1 1) is not."
+  (every #'numberp qualities)
   (<= (count 1 qualities) 1))
 
 (defgeneric threadp (knot beadie0 beadie1)
@@ -155,6 +159,7 @@
   "Define a generic function and method specialized on the knot class to rotate a given beadie pi/2 either clockwise or counterclockwise around AXIS. AXIS can be the symbol X, Y or Z.
 
 The defined function is called ROTATE-AXIS where AXIS is replaced by its value, and it takes a KNOT instance, BEADIE instance, and DIRECTION (either 'pull or 'push) as input."
+  (check-type axis (and symbol (not null)))
   (let* (;; Define the first and second axis such that axis1 curl axis2 is AXIS
          (axis1 (cond ((equal axis 'x) 'y)
                       ((equal axis 'y) 'z)
@@ -230,6 +235,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defun beadie-to-sheet-x (beadie)
   "Transform the beadie's X Y Z coordinates to the X coordinates of the sheet to be used by CLIM."
+  (check-type beadie beadie)
   (let* ((rotated-x (- (* (x-pos beadie) (cos *ry-theta*))
                        (* (z-pos beadie) (sin *ry-theta*))))
          (scaled-x (* *beadie-scale* rotated-x))
@@ -238,6 +244,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defun beadie-to-sheet-y (beadie)
   "Transform the beadie's X Y Z coordinates to the Y coordinates of the sheet to be used by CLIM."
+  (check-type beadie beadie)
   (let* ((z (+ (* (x-pos beadie) (sin *ry-theta*))
                (* (z-pos beadie) (cos *ry-theta*))))
          (rotated-y (- (* (y-pos beadie) (cos *rx-theta*))
@@ -248,6 +255,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defun draw-beadies (knot stream)
   "Draw each beadie, and fill it in with color if it's in its solved location."
+  (check-type knot knot)
   (dolist (beadie (beadies knot))
     (let ((x (beadie-to-sheet-x beadie))
           (y (beadie-to-sheet-y beadie))
@@ -259,6 +267,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defun draw-threads (knot stream)
   "Draw threads between beadies which are adjacent."
+  (check-type knot knot)
   (dolist (beadie0 (beadies knot))
       (dolist (beadie1 (beadies knot))
         (when (threadp knot beadie0 beadie1)
