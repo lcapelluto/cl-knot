@@ -74,7 +74,7 @@
       (is (equal (list 0 2 0) (qualities b000)))
       (cl-knot::rotate-y *knot* b000 'cl-knot::pull)
       (is (equal (list 0 2 2) (qualities b000)))
-      (cl-knot::rotate-z *knot* b000 'cl-knot::pull)
+      (cl-knot::rotate-z *knot* b000 'cl-knot::push)
       (is (equal (list 2 2 2) (qualities b000))))
     (let ((b122 (cl-knot::make-beadie 1 2 2)))
       ;; Why not?
@@ -83,5 +83,5 @@
       (cl-knot::rotate-x *knot* b122 'cl-knot::push)
       (is (equal (list 0 1 0) (qualities b122)))
       ;; Rotate ze knot!
-      (cl-knot::rotate-z *knot* b122 'cl-knot::push)
+      (cl-knot::rotate-z *knot* b122 'cl-knot::pull)
       (is (equal (list 1 0 0) (qualities b122))))))
