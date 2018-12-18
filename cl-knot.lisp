@@ -232,6 +232,7 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (defparameter *ry-theta* (/ (* 5 pi) 6))
 (defparameter *teal* (clim:make-rgb-color (/ 10 225) (/ 212 255) (/ 212 255)))
 (defparameter *light-gray* (clim:make-rgb-color (/ 200 225) (/ 232 255) (/ 232 255)))
+(defparameter *dark-gray* (clim:make-rgb-color (/ 100 225) (/ 132 255) (/ 132 255)))
 
 (defun beadie-to-sheet-x (beadie)
   "Transform the beadie's X Y Z coordinates to the X coordinates of the sheet to be used by CLIM."
@@ -278,10 +279,51 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
                            (beadie-to-sheet-y beadie1)
                            :line-thickness 2)))))
 
+(defun draw-pusheen (stream)
+  "Draw a little Pusheen."
+  (clim:with-drawing-options (stream :line-thickness 2)
+    ;; Ears
+    (clim:draw-line* stream 30 20 17 35)
+    (clim:draw-line* stream 30 20 40 30)
+    (clim:draw-line* stream 40 30 60 30)
+    (clim:draw-line* stream 60 30 70 20)
+    (clim:draw-line* stream 70 20 84 37)
+    ;; Stripes
+    (clim:draw-circle* stream 42 30 4 :start-angle pi :end-angle 0
+                                      :ink *dark-gray*)
+    (clim:draw-circle* stream 50 30 4 :start-angle pi :end-angle 0
+                                      :ink *dark-gray*)
+    (clim:draw-circle* stream 58 30 4 :start-angle pi :end-angle 0
+                                      :ink *dark-gray*)
+    ;; Eyes: left and right
+    (clim:draw-circle* stream 33 43 4 :filled t)
+    (clim:draw-circle* stream 67 43 4 :filled t)
+    ;; Nose
+    (clim:draw-circle* stream 55 50 5 :start-angle pi
+                                      :end-angle (* -1 (/ pi 3))
+                                      :filled nil)
+    (clim:draw-circle* stream 45 50 5 :start-angle (* 4 (/ pi 3))
+                                      :end-angle (/ pi 10)
+                                      :filled nil)
+    ;; Whiskers: 2 left and 2 right
+    (clim:draw-circle* stream 7 92 50 :start-angle (* 5 (/ pi 12))
+                                      :end-angle (/ pi 2)
+                                      :filled nil)
+    (clim:draw-circle* stream 20 100 50 :start-angle (/ pi 2)
+                                        :end-angle (* 7 (/ pi 12))
+                                        :filled nil)
+    (clim:draw-circle* stream 96 92 50 :start-angle (/ pi 2)
+                                       :end-angle (* 7 (/ pi 12))
+                                       :filled nil)
+    (clim:draw-circle* stream 83 100 50 :start-angle (* 5 (/ pi 12))
+                                        :end-angle (/ pi 2)
+                                        :filled nil)))
+
 (defun display-pusheens-home (frame pane)
   "How to display Pusheen's home."
   (draw-threads (knot frame) pane)
   (draw-beadies (knot frame) pane)
+  (draw-pusheen pane)
   (clim:draw-text* pane "F" (/ *width* 2) (/ *height* 1.8))
   (clim:draw-text* pane "L" (/ *width* 2.1) (/ *height* 2.4))
   (let ((text "Use Rubik's cube notation to untangle the knot"))
