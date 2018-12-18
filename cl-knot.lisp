@@ -260,33 +260,21 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (defun draw-threads (knot stream)
   "Draw threads between beadies which are adjacent."
   (dolist (beadie0 (beadies knot))
-    ;; Inefficient! Needs to be fixed but OK for so few beadies.
-    (dolist (beadie1 (beadies knot))
-      (when (threadp knot beadie0 beadie1)
-        (let ((b0-sol (make-beadie (first (solved-pos beadie0))
-                                   (second (solved-pos beadie0))
-                                   (third (solved-pos beadie0))))
-              (b1-sol (make-beadie (first (solved-pos beadie1))
-                                   (second (solved-pos beadie1))
-                                   (third (solved-pos beadie1)))))
-          ;; Sketch in some gray lines to define the knot's shape
+      (dolist (beadie1 (beadies knot))
+        (when (threadp knot beadie0 beadie1)
           (clim:draw-line* stream
-                           (beadie-to-sheet-x b0-sol)
-                           (beadie-to-sheet-y b0-sol)
-                           (beadie-to-sheet-x b1-sol)
-                           (beadie-to-sheet-y b1-sol)
-                           :ink *light-gray*))
-        ;; Draw the thread between these beadies
-        (clim:draw-line* stream
-                         (beadie-to-sheet-x beadie0)
-                         (beadie-to-sheet-y beadie0)
-                         (beadie-to-sheet-x beadie1)
-                         (beadie-to-sheet-y beadie1))))))
+                           (beadie-to-sheet-x beadie0)
+                           (beadie-to-sheet-y beadie0)
+                           (beadie-to-sheet-x beadie1)
+                           (beadie-to-sheet-y beadie1)
+                           :line-thickness 2)))))
 
 (defun display-pusheens-home (frame pane)
   "How to display Pusheen's home."
   (draw-threads (knot frame) pane)
   (draw-beadies (knot frame) pane)
+  (clim:draw-text* pane "F" (/ *width* 2) (/ *height* 1.8))
+  (clim:draw-text* pane "L" (/ *width* 2.1) (/ *height* 2.4))
   (let ((text "Use Rubik's cube notation to untangle the knot"))
     (when (untangledp (knot clim:*application-frame*))
       (setf text "Success!"))
@@ -321,20 +309,20 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   `(define-pusheens-home-command (,command :name t) ()
      (apply-move (knot clim:*application-frame*) (make-plane ,axis ,pos) ,direction)))
 
-;; Define all the gameplay moves, using standard Rubik's cube notation. Direction mappings (clockwise <-> push, counterclockwise <-> pull) swap from L to R, F to B, and D to U so that the transformations can be independent of the plane.
+;; Define all the gameplay moves, using standard Rubik's cube notation. Direction mappings swap from L to R, F to B, and D to U so that the transformations can be independent of the plane.
 
-(register-move com-L 'x 0 'pull)
-(register-move com-Linv 'x 0 'push)
-(register-move com-R 'x 2 'push)
-(register-move com-Rinv 'x 2 'pull)
-(register-move com-D 'y 0 'pull)
-(register-move com-Dinv 'y 0 'push)
-(register-move com-U 'y 2 'push)
-(register-move com-Uinv 'y 2 'pull)
-(register-move com-F 'z 0 'pull)
-(register-move com-Finv 'z 0 'push)
-(register-move com-B  'z 2 'pull)
-(register-move com-Binv 'z 2 'push)
+(register-move com-R 'x 0 'pull)
+(register-move com-Rinv 'x 0 'push)
+(register-move com-L 'x 2 'push)
+(register-move com-Linv 'x 2 'pull)
+(register-move com-U 'y 0 'pull)
+(register-move com-Uinv 'y 0 'push)
+(register-move com-D 'y 2 'push)
+(register-move com-Dinv 'y 2 'pull)
+(register-move com-B 'z 0 'pull)
+(register-move com-Binv 'z 0 'push)
+(register-move com-F 'z 2 'push)
+(register-move com-Finv 'z 2 'pull)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Entry ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
