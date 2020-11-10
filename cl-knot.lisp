@@ -17,11 +17,12 @@
                :documentation "The beadie location on the y-axis.")
    (z-position :initarg :z-position
                :accessor z-pos
-               :documentation "The beadie location on the z-axis.")))
+               :documentation "The beadie location on the z-axis."))
+  (:documentation "A point in space that has a \"home\" position."))
 
-(defmacro make-beadie (x y z)
-  (every #'numberp (list x y z))
-  `(make-instance 'beadie :x-position ,x :y-position ,y :z-position ,z))
+(defun make-beadie (x y z)
+  (assert (every #'numberp (list x y z)))
+  (make-instance 'beadie :x-position x :y-position y :z-position z))
 
 (defmethod initialize-instance :after ((object beadie) &key)
   (setf (slot-value object 'solved-position)
@@ -39,77 +40,71 @@
   "Return the vector absolute difference of the beadies' solved position."
   (check-type beadie0 beadie)
   (check-type beadie1 beadie)
-  (loop :for axis :in '(0 1 2)
+  (loop :for a :in (solved-pos beadie0)
+        :for b :in (solved-pos beadie1)
         ;; Collect the absolute difference for X Y and Z axes
-        :collect (abs (- (nth axis (solved-pos beadie0))
-                         (nth axis (solved-pos beadie1))))))
+        :collect (abs (- a b))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Knots ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass knot ()
-  ((beadies :accessor beadies
+  ((beadies :initarg beadies
+            :accessor beadies
             :documentation "The beadies which are part of the knot.")
-   (center :accessor center
+   (center :initarg :center
+           :accessor center
            :documentation "Geometrically central point of the knot around which to rotate beadies."))
   (:documentation "The game knot from which we attempt to untangle Pusheen!"))
 
 (defclass tiny-knot (knot)
-  ((beadies :initform (make-tiny-knot))
-   (center :initform (make-point 0.5 0.5 0.5))))
+  ()
+  (:default-initargs
+   :beadies (make-tiny-knot)
+   :center (make-point 0.5 0.5 0.5)))
 
 (defun make-tiny-knot ()
   "Make a list of just 8 beadies, matching a 2x2x2 cube."
   (let ((knot nil))
-    (loop :for x :in (list 0 1) :do
-      (loop :for y :in (list 0 1) :do
-        (loop :for z :in (list 0 1) :do
-          (push (make-beadie x y z) knot))))
-    knot))
+    (dotimes (x 2 knot)
+      (dotimes (y 2)
+        (dotimes (z 2)
+          (push (make-beadie x y z) knot))))))
 
 (defclass simple-knot (knot)
-  ((beadies :initform (make-simple-knot))
-   (center :initform (make-point 1.0 1.0 1.0))))
+  ()
+  (:default-initargs
+   :beadies (make-simple-knot)
+    :center (make-point 1.0 1.0 1.0)))
+
+(defun base3->list (num)
+  "Convert an integer interpreted in base 3 to a list of 3 integers, starting with the most significant."
+  (reverse (loop :repeat 3
+                 :collect (mod num 3)
+                 :do (setf num (floor num 3)))))
+
+(defun list->base3 (list)
+  "Inverse of BASE3->LIST."
+  (reduce (lambda (num d)
+            (+ d (* 3 num)))
+          list))
+
+(defun simple-beadie-qualities-p (qualities)
+  "Does this collection of qualities belong in the simple knot? The simple knot excludes middle pieces, so a beadie is a simple beadie only if its position has at most one coordinate valued 1. E.g. (0 1 2) is a simple beadie, but but (0 1 1) is not."
+  (assert (every #'numberp qualities))
+  (<= (count 1 qualities) 1))
 
 (defun make-simple-knot ()
   "Make a list of beadies roughly patterned after a void cube."
-  (let ((curr (list 0 0 0)))
-    (loop
-      :collect (make-beadie (first curr) (second curr) (third curr))
-      :do (setf curr (update-simple-qualities curr))
-      :until (null curr))))
+  (loop :for base3 :from #3r000 :to #3r222
+        :for qualities := (base3->list base3)
+        :when (simple-beadie-qualities-p qualities)
+          :collect (apply #'make-beadie qualities)))
 
-(defun update-simple-qualities (qualities)
-  "Return the next trio of qualities which belong in a simple knot."
-  (loop :do
-    (setf qualities (update-quality-index qualities))
-        :until (or (null qualities) (simple-beadie-p qualities)))
-  qualities)
-
-(defun update-quality-index (qualities &optional (index 2))
-  "Increase, like in a ternary string, the list of qualities, starting at INDEX and moving to the next significant index if needed."
-  (let ((new-val (+ 1 (nth index qualities))))
-    (cond
-      ((< new-val 3)
-       (setf (nth index qualities) new-val))
-      ((= index 0)
-       ;; We've reached the last beadie
-       (setf qualities nil))
-      (t
-       ;; We have to "carry the 1"
-       (setf (nth index qualities) 0)
-       (setf qualities (update-quality-index qualities (- index 1)))))
-    qualities))
-
-(defun simple-beadie-p (qualities)
-  "Does this collection of qualities belong in the simple knot? The simple knot excludes middle pieces, so the beadie is a simple beadie only if the beadie's position has at most one coordinate valued 1. For example: (0 1 2) is a simple beadie but (0 1 1) is not."
-  (every #'numberp qualities)
-  (<= (count 1 qualities) 1))
-
-(defgeneric threadp (knot beadie0 beadie1)
+(defgeneric thread-between-beadies-p (knot beadie0 beadie1)
   (:documentation "Is there a thread between the two beadies, i.e. are they neighbors?")
 
   (:method ((knot knot) beadie0 beadie1)
-    (let ((differences (apply '+ (solution-difference beadie0 beadie1))))
+    (let ((differences (reduce #'+ (solution-difference beadie0 beadie1))))
       (<= differences 1))))
 
 (defgeneric tangle-knot (knot)
@@ -131,16 +126,13 @@
   (:documentation "T if the input is in the solution state, NIL otherwise.")
 
   (:method ((beadie beadie))
-    "Is the beadie in the solution state?"
+    ;; Is the beadie in the solution state?
     (equal (solved-pos beadie)
            (list (x-pos beadie) (y-pos beadie) (z-pos beadie))))
 
   (:method ((knot knot))
-    "Is the knot untangled (i.e. in the solution state)?"
-    (loop :for beadie :in (beadies knot)
-          :when (not (untangledp beadie))
-            :do (return nil)
-          :finally (return t))))
+    ;; Is the knot untangled (i.e. in the solution state)?
+    (every #'untangledp (beadies knot))))
 
 (defmethod print-object ((object knot) stream)
   (print-unreadable-object (object stream :type t)
@@ -149,50 +141,52 @@
 
 (defstruct (point (:constructor make-point (x y z)))
   "A 3D point."
-  (x 0 :type float)
-  (y 0 :type float)
-  (z 0 :type float))
+  (x 0 :type real :read-only t)
+  (y 0 :type real :read-only t)
+  (z 0 :type real :read-only t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Gameplay ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro make-axis-rotation (axis)
+;;; EVAL-WHEN so it can be used in macroexpansions below.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+   (defun orthogonal (axis)
+     "The first and second axis such that axis1 curl axis2 is AXIS"
+     (ecase axis
+       (x (values 'y 'z))
+       (y (values 'z 'x))
+       (z (values 'x 'y)))))
+
+(defmacro define-axis-rotation (func-name axis)
   "Define a generic function and method specialized on the knot class to rotate a given beadie pi/2 either clockwise or counterclockwise around AXIS. AXIS can be the symbol X, Y or Z.
 
 The defined function is called ROTATE-AXIS where AXIS is replaced by its value, and it takes a KNOT instance, BEADIE instance, and DIRECTION (either 'pull or 'push) as input."
-  (check-type axis (and symbol (not null)))
-  (let* (;; Define the first and second axis such that axis1 curl axis2 is AXIS
-         (axis1 (cond ((equal axis 'x) 'y)
-                      ((equal axis 'y) 'z)
-                      ((equal axis 'z) 'x)))
-         (axis2 (cond ((equal axis 'x) 'z)
-                      ((equal axis 'y) 'x)
-                      ((equal axis 'z) 'y)))
-         (func-name (intern (format nil "ROTATE-~a" axis)))
-         (axis1-pos (intern (format nil "~a-POS" axis1)))
-         (axis2-pos (intern (format nil "~a-POS" axis2))))
-    `(defgeneric ,func-name (knot beadie direction)
-       (:documentation "Rotate the given BEADIE around the center of the KNOT along the axis ,axis and in the direction DIRECTION.")
-       (:method ((knot knot) beadie direction)
-         (let* ((ax1-center (,(intern (format nil "POINT-~a" axis1)) (center knot)))
-                (ax2-center (,(intern (format nil "POINT-~a" axis2)) (center knot)))
-                (ax1-beadie-pos (,axis1-pos beadie))
-                (ax2-beadie-pos (,axis2-pos beadie))
-                (ax1-sign (if (equal direction 'pull)
+  (check-type axis (member x y z))
+  (multiple-value-bind (axis1 axis2) (orthogonal axis)
+    (let ((axis1-pos (intern (format nil "~a-POS" axis1)))
+          (axis2-pos (intern (format nil "~a-POS" axis2))))
+      `(defgeneric ,func-name (knot beadie direction)
+         (:documentation ,(format nil "Rotate the given BEADIE around the center of the KNOT along the axis ~A and in the direction DIRECTION." axis))
+         (:method ((knot knot) beadie direction)
+           (let* ((ax1-center (,(intern (format nil "POINT-~a" axis1)) (center knot)))
+                  (ax2-center (,(intern (format nil "POINT-~a" axis2)) (center knot)))
+                  (ax1-beadie-pos (,axis1-pos beadie))
+                  (ax2-beadie-pos (,axis2-pos beadie))
+                  (ax1-sign (if (equal direction 'pull)
                                 -1
                                 1))
-                (ax2-sign (* -1 ax1-sign)))
-           (setf (,axis1-pos beadie)
-                 (floor (+ ax1-center
-                           (* ax1-sign
-                              (- ax2-beadie-pos ax2-center)))))
-           (setf (,axis2-pos beadie)
-                 (floor (+ ax2-center
-                           (* ax2-sign
-                              (- ax1-beadie-pos ax1-center))))))))))
+                  (ax2-sign (* -1 ax1-sign)))
+             (setf (,axis1-pos beadie)
+                   (floor (+ ax1-center
+                             (* ax1-sign
+                                (- ax2-beadie-pos ax2-center)))))
+             (setf (,axis2-pos beadie)
+                   (floor (+ ax2-center
+                             (* ax2-sign
+                                (- ax1-beadie-pos ax1-center)))))))))))
 
-(make-axis-rotation x)
-(make-axis-rotation y)
-(make-axis-rotation z)
+(define-axis-rotation rotate-x x)
+(define-axis-rotation rotate-y y)
+(define-axis-rotation rotate-z z)
 
 (defgeneric apply-move (knot plane direction)
   (:documentation "Act a complete move upon the knot structure.")
@@ -217,8 +211,8 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 
 (defstruct (plane (:constructor make-plane (axis position)))
   "An infinite 2D plane, perpendicular to the AXIS, X Y or Z, given by the POSITION along that axis."
-  (axis 'x)
-  (position 0 :type integer))
+  (axis 'x    :type (member x y z) :read-only t)
+  (position 0 :type integer        :read-only t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Graphics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -270,14 +264,14 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
   "Draw threads between beadies which are adjacent."
   (check-type knot knot)
   (dolist (beadie0 (beadies knot))
-      (dolist (beadie1 (beadies knot))
-        (when (threadp knot beadie0 beadie1)
-          (clim:draw-line* stream
-                           (beadie-to-sheet-x beadie0)
-                           (beadie-to-sheet-y beadie0)
-                           (beadie-to-sheet-x beadie1)
-                           (beadie-to-sheet-y beadie1)
-                           :line-thickness 2)))))
+    (dolist (beadie1 (beadies knot))
+      (when (thread-between-beadies-p knot beadie0 beadie1)
+	(clim:draw-line* stream
+			 (beadie-to-sheet-x beadie0)
+			 (beadie-to-sheet-y beadie0)
+			 (beadie-to-sheet-x beadie1)
+			 (beadie-to-sheet-y beadie1)
+			 :line-thickness 2)))))
 
 (defun draw-pusheen (stream)
   "Draw a little Pusheen."
@@ -358,22 +352,22 @@ The defined function is called ROTATE-AXIS where AXIS is replaced by its value, 
 (defmacro register-move (command axis pos direction)
   "Register a new gameplay move."
   `(define-pusheens-home-command (,command :name t) ()
-     (apply-move (knot clim:*application-frame*) (make-plane ,axis ,pos) ,direction)))
+     (apply-move (knot clim:*application-frame*) (make-plane ',axis ,pos) ',direction)))
 
 ;; Define all the gameplay moves, using standard Rubik's cube notation. Direction mappings swap from L to R, F to B, and D to U so that the transformations can be independent of the plane.
 
-(register-move com-R 'x 0 'pull)
-(register-move com-Rinv 'x 0 'push)
-(register-move com-L 'x 2 'push)
-(register-move com-Linv 'x 2 'pull)
-(register-move com-U 'y 0 'pull)
-(register-move com-Uinv 'y 0 'push)
-(register-move com-D 'y 2 'push)
-(register-move com-Dinv 'y 2 'pull)
-(register-move com-B 'z 0 'pull)
-(register-move com-Binv 'z 0 'push)
-(register-move com-F 'z 2 'push)
-(register-move com-Finv 'z 2 'pull)
+(register-move com-R    x 0 pull)
+(register-move com-Rinv x 0 push)
+(register-move com-L    x 2 push)
+(register-move com-Linv x 2 pull)
+(register-move com-U    y 0 pull)
+(register-move com-Uinv y 0 push)
+(register-move com-D    y 2 push)
+(register-move com-Dinv y 2 pull)
+(register-move com-B    z 0 pull)
+(register-move com-Binv z 0 push)
+(register-move com-F    z 2 push)
+(register-move com-Finv z 2 pull)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Entry ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
